@@ -1,0 +1,20 @@
+<resources>
+    <string name="app_name">Showcase Layout Compose</string>
+    <string name="drop_down_menu">menu</string>
+    <string name="about_app">About app</string>
+    <string name="about_library">Showcase Layout Compose is an open source android library that will let you easily and beautifully showcase your app\'s Compose UI to your users.</string>
+    <string name="hello">Hello</string>
+    <string name="tip_icon_description">tip icon</string>
+    <string name="usage">Usage</string>
+    <string name="notifications_filter">Notifications Filter</string>
+    <string name="enabled">Enabled</string>
+    <string name="disabled">Disabled</string>
+    <string name="grayscale">Grayscale</string>
+    <string name="infinite_scrolling">Infinite Scrolling Blocker</string>
+    <string name="back">Back</string>
+    <string name="developer">Developer</string>
+    <string name="taha_name_dev">Taha (tahaak67)</string>
+    <string name="source_code">Source code</string>
+    <string name="cant_open_link_error_link_copied">Can\'t find a browser, link copied to clipboard</string>
+    <string name="version">Version</string>
+</resources>
