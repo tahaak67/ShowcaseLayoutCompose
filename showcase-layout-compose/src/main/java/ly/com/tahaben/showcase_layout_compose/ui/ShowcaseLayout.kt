@@ -54,7 +54,7 @@ private const val TAG = "ShowcaseLayout"
  * @param isDarkLayout if true the showcase view will be white instead of black.
  * @param initKey the initial value of counter, set this to 1 if you don't want a greeting screen before showcasing target.
  * @param animationDuration total animation time taken when switching from current to next target in milliseconds.
- * @param onTap what happens when all items are showcased.
+ * @param onFinish what happens when all items are showcased.
  * @param greeting greeting message, leave initKey at 0 if you want to use this.
  **/
 
@@ -64,7 +64,7 @@ fun ShowcaseLayout(
     isDarkLayout: Boolean = false,
     initKey: Int = 0,
     animationDuration: Int = 1000,
-    onTap: () -> Unit,
+    onFinish: () -> Unit,
     greeting: ShowcaseMsg? = null,
     content: @Composable ShowcaseScope.() -> Unit
 ) {
@@ -127,7 +127,7 @@ fun ShowcaseLayout(
                             } else {
                                 //showcase finished
                                 Log.d(TAG, "on tap")
-                                onTap()
+                                onFinish()
                             }
                             Log.d(TAG, "tapped here $it")
                         }
@@ -270,9 +270,6 @@ fun ShowcaseLayout(
 
             message?.let { msg ->
                 Log.d(TAG, "max: x:${maxWidth} y:${maxHeight}")
-                val xDp = if (currentKey == 0) (0.dp) else with(density) {
-                    maxWidth / 2
-                }
                 val yDp = if (currentKey == 0) (maxHeight / 2) else with(density) {
                     //Determine if message will be shown on top or below target
                     when (msg.gravity) {
@@ -299,9 +296,8 @@ fun ShowcaseLayout(
                         }
                     }
                 }
-                val xAnim by animateDpAsState(targetValue = xDp)
                 val yAnim by animateDpAsState(targetValue = yDp)
-                Log.d(TAG, "msg x: $xDp, y:$yDp")
+                Log.d(TAG, "msg , y:$yDp")
                 Row(
                     modifier = Modifier.fillMaxWidth(),
                     horizontalArrangement = Arrangement.Center

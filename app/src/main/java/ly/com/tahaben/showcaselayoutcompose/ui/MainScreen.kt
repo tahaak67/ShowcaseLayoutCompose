@@ -1,9 +1,7 @@
 package ly.com.tahaben.showcaselayoutcompose.ui
 
-import androidx.compose.foundation.Image
+import androidx.compose.foundation.*
 import androidx.compose.foundation.layout.*
-import androidx.compose.foundation.rememberScrollState
-import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.*
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.MoreVert
@@ -39,18 +37,21 @@ fun MainScreen(
         mutableStateOf(true)
     }
 
-    ShowcaseLayout(isShowcasing = isShowcasing, onTap = { isShowcasing = false }) {
+    ShowcaseLayout(
+        isShowcasing = isShowcasing,
+        onFinish = { isShowcasing = false },
+        isDarkLayout = isSystemInDarkTheme()
+    ) {
 
         Column(
             modifier = Modifier
                 .fillMaxSize()
-
+                .background(MaterialTheme.colors.primary)
         ) {
             TopAppBar(
                 title = {
-                    Text(text = "ShowcaseLayout Test", color = Color.Black)
+                    Text(text = "ShowcaseLayout Test", color = MaterialTheme.colors.onPrimary)
                 },
-                backgroundColor = Color.White,
                 actions = {
 
                     // Creating Icon button for dropdown menu
@@ -59,10 +60,13 @@ fun MainScreen(
                             k = 3,
                             message = ShowcaseMsg(
                                 "From drop down menu, you can access the About app screen!",
-                                textStyle = TextStyle(color = Color.Black),
-                                msgBackground = Color.White,
+                                textStyle = TextStyle(color = MaterialTheme.colors.onPrimary),
+                                msgBackground = MaterialTheme.colors.primary,
                                 roundedCorner = 15.dp,
-                                arrow = Arrow(animateFromMsg = true)
+                                arrow = Arrow(
+                                    animateFromMsg = true,
+                                    color = MaterialTheme.colors.primary
+                                )
                             )
                         ) {
                             Icon(Icons.Default.MoreVert, stringResource(R.string.drop_down_menu))
@@ -85,7 +89,7 @@ fun MainScreen(
                                         style = MaterialTheme.typography.h6,
                                         fontWeight = FontWeight.Normal,
                                         textAlign = TextAlign.Center,
-                                        color = Color.Black
+                                        color = MaterialTheme.colors.onPrimary
                                     )
                                 }
                             }
@@ -102,10 +106,13 @@ fun MainScreen(
                 Text(
                     text = stringResource(id = R.string.hello),
                     style = MaterialTheme.typography.h1,
-                    color = Color.Black
+                    color = MaterialTheme.colors.onPrimary
                 )
                 Spacer(modifier = Modifier.height(spacing.spaceMedium))
-                Row(modifier = Modifier.fillMaxWidth()) {
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
                     Image(
                         painter = painterResource(id = R.drawable.ic_tip),
                         contentDescription = stringResource(R.string.tip_icon_description)
@@ -116,13 +123,17 @@ fun MainScreen(
                             "Useful tip tho :P",
                             textStyle = TextStyle(color = Color.DarkGray),
                             msgBackground = Color(0xFFE0F2F1),
-                            arrow = Arrow(targetFrom = Side.Top, hasHead = false)
+                            arrow = Arrow(
+                                targetFrom = Side.Top,
+                                hasHead = false,
+                                color = MaterialTheme.colors.primary
+                            )
                         )
                     ) {
                         Text(
                             text = tip,
                             style = MaterialTheme.typography.h5,
-                            color = Color.Black
+                            color = MaterialTheme.colors.onPrimary
                         )
                     }
                 }
@@ -136,9 +147,9 @@ fun MainScreen(
                         ShowcaseMsg(
                             "Track your phone usage from here",
                             textStyle = TextStyle(color = Color(0xFF827717)),
-                            msgBackground = Color.White,
+                            msgBackground = MaterialTheme.colors.primary,
                             gravity = Gravity.Bottom,
-                            arrow = Arrow()
+                            arrow = Arrow(color = MaterialTheme.colors.primary)
                         )
                     ) {
                         MainScreenCard(

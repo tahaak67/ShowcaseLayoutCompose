@@ -44,3 +44,16 @@ dependencies {
     androidTestImplementation 'androidx.test.ext:junit:1.1.3'
 
 }
+
+ext {
+
+    PUBLISH_GROUP_ID = 'ly.com.tahaben'
+
+    PUBLISH_VERSION = '1.0.0'
+
+    PUBLISH_ARTIFACT_ID = 'showcase-layout-compose'
+
+}
+
+
+apply from: "${rootProject.projectDir}/scripts/publish-module.gradle"

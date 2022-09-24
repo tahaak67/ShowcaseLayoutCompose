@@ -3,6 +3,7 @@ package ly.com.tahaben.showcaselayoutcompose.ui
 import android.content.Intent
 import android.net.Uri
 import android.widget.Toast
+import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
@@ -34,12 +35,15 @@ fun AboutScreen(
         modifier = Modifier
             .fillMaxSize()
             .verticalScroll(scrollState)
+            .background(MaterialTheme.colors.primary)
     ) {
         TopAppBar(
             title = {
-                Text(text = stringResource(R.string.about_app))
+                Text(
+                    text = stringResource(R.string.about_app),
+                    color = MaterialTheme.colors.onPrimary
+                )
             },
-            backgroundColor = Color.White,
             navigationIcon = {
                 IconButton(onClick = onNavigateUp) {
                     Icon(
@@ -58,24 +62,28 @@ fun AboutScreen(
             Spacer(modifier = Modifier.height(spacing.spaceMedium))
             Text(
                 text = stringResource(R.string.about_library),
-                style = MaterialTheme.typography.h6
+                style = MaterialTheme.typography.h6,
+                color = MaterialTheme.colors.onPrimary
             )
             Spacer(modifier = Modifier.height(spacing.spaceMedium))
             Text(
                 text = stringResource(R.string.developer),
                 style = MaterialTheme.typography.h5,
-                fontWeight = FontWeight.Bold
+                fontWeight = FontWeight.Bold,
+                color = MaterialTheme.colors.onPrimary
             )
             Spacer(modifier = Modifier.height(spacing.spaceMedium))
             Text(
                 text = stringResource(R.string.taha_name_dev),
-                style = MaterialTheme.typography.h5
+                style = MaterialTheme.typography.h5,
+                color = MaterialTheme.colors.onPrimary
             )
             Spacer(modifier = Modifier.height(spacing.spaceMedium))
             Text(
                 text = stringResource(R.string.source_code),
                 style = MaterialTheme.typography.h5,
-                fontWeight = FontWeight.Bold
+                fontWeight = FontWeight.Bold,
+                color = MaterialTheme.colors.onPrimary
             )
             Spacer(modifier = Modifier.height(spacing.spaceMedium))
             Text(
@@ -104,12 +112,14 @@ fun AboutScreen(
             Text(
                 text = stringResource(R.string.version),
                 style = MaterialTheme.typography.h5,
-                fontWeight = FontWeight.Bold
+                fontWeight = FontWeight.Bold,
+                color = MaterialTheme.colors.onPrimary
             )
             Spacer(modifier = Modifier.height(spacing.spaceMedium))
             Text(
-                text = "0.0.1 (1)",
-                style = MaterialTheme.typography.h5
+                text = "1.0.0 (1)",
+                style = MaterialTheme.typography.h5,
+                color = MaterialTheme.colors.onPrimary
             )
 
         }
