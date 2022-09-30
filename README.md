@@ -10,13 +10,6 @@ Create a beautiful animated showcase effect for you android app easily !
 
 <img src="metadata/gif/slc-light.gif" alt="Library demo GIF" width="300" />
 
-## Screenshots
-
-<img src="metadata/screenshots/screenshot-1.png" alt="Screenshot" height="530" width="250" /> <img src="metadata/screenshots/screenshot-2.png" alt="Screenshot" height="530"  width="250" /> <img src="metadata/screenshots/screenshot-3.png"  height="530" alt="Screenshot" width="250" /> \
-With Dark layout enabled:
-
-<img src="metadata/screenshots/screenshot-4.png" alt="Screenshot" height="530"  width="250" /> <img src="metadata/screenshots/screenshot-5.png" alt="Screenshot"  height="530" width="250" />
-
 ## Usage
 
 Showcase Layout Compose is available on `mavencentral()`.
@@ -89,18 +82,32 @@ ShowcaseLayout(
 )
 ```
 
+<p align="center">
+isDarkLayout = true <br/>
+    <img src="metadata/screenshots/screenshot-4.png" alt="Screenshot" height="530"  width="250" /> <img src="metadata/screenshots/screenshot-5.png" alt="Dark layout example 1"  height="530" width="250" />
+</p>
+
 #### greeting
 
 A customizable greeting message of type `showcaseMsg()`
 
 ```kotlin
-    ShowcaseLayout(
+
+ShowcaseLayout(
     isShowcasing = isShowcasing,
     onFinish = { isShowcasing = false },
     isDarkLayout = isSystemInDarkTheme(),
-    greeting = ShowcaseMsg("Welcome to my app, lets take you on a quick tour!, press anywhere to continue")
-) 
+    greeting = ShowcaseMsg(
+        "Welcome to my app, lets take you on a quick tour!, tap anywhere to continue",
+        textStyle = TextStyle(color = Color.White)
+    )
+)
+
 ```
+
+<p align="center">
+ <img src="metadata/screenshots/screenshot-7.jpg" alt="Greeting msg example"  width="250" />
+ </p>
 
 #### initKey
 
@@ -143,6 +150,14 @@ ShowcaseMsg(
 )
 ```
 
+<p align="center">
+
+| ShowcaseMsg | without ShowcaseMsg |
+| :---------------: | :---------------: |
+|<img src="metadata/screenshots/screenshot-8.jpg" alt="Screenshot" height="530"  width="250" />|<img src="metadata/screenshots/screenshot-6.jpg" alt="Screenshot" height="530"  width="250" />|
+
+</p>
+
 #### Arrow
 
 Used with ShowcaseMsg to add an arrow pointing to the target
@@ -159,7 +174,11 @@ arrow = Arrow(
     //color of the arrow
     color = MaterialTheme.colors.primary
 )
-```
+``` 
+
+| Default Arrow | `animateFromMsg = true` | `hasHead = false` |
+| :---------------: | :---------------: | :---------------: |
+|<img src="metadata/screenshots/screenshot-1.png" align="center" alt="Screenshot"  width="250" /> | <img src="metadata/screenshots/screenshot-2.png" align="center" alt="Screenshot"  width="250" />| <img src="metadata/screenshots/screenshot-3.png" align="center" alt="Screenshot"  width="250" />|
 
 ## Complete Example
 
