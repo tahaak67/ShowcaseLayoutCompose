@@ -8,7 +8,14 @@ Create a beautiful animated showcase effect for you android app easily !
 
 ## Demo
 
-<img src="metadata/gif/slc-light.gif" width="300" />
+<img src="metadata/gif/slc-light.gif" alt="Library demo GIF" width="300" />
+
+## Screenshots
+
+<img src="metadata/screenshots/screenshot-1.png" alt="Screenshot" height="530" width="250" /> <img src="metadata/screenshots/screenshot-2.png" alt="Screenshot" height="530"  width="250" /> <img src="metadata/screenshots/screenshot-3.png"  height="530" alt="Screenshot" width="250" /> \
+With Dark layout enabled:
+
+<img src="metadata/screenshots/screenshot-4.png" alt="Screenshot" height="530"  width="250" /> <img src="metadata/screenshots/screenshot-5.png" alt="Screenshot"  height="530" width="250" />
 
 ## Usage
 
@@ -60,13 +67,13 @@ text "ShowcaseLayout Test 1"
 }
 ```
 
-### Step 3
+#### Step 3
 
 Start showcasing by making `isShowcasing = true`, and stop showcasing by making it false \
 above we stop showcasing after we showcase the last item using `onFinished` which is called whenever
 all items are showcased,
 
-Done, our text is now showcased customize it further with Additional parameters
+Done, our text is now showcased!, customize it further with Additional parameters
 
 #### Additional parameters
 
