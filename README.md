@@ -17,7 +17,7 @@ Showcase Layout Compose is available on `mavencentral()`.
 Add the dependency to your module's `build.gradle` file like below
 
 ```
-implementation("ly.com.tahaben:showcase-layout-compose:1.0.1")
+implementation("ly.com.tahaben:showcase-layout-compose:1.0.3")
 ```
 
 #### Step 1
@@ -32,7 +32,7 @@ ShowcaseLayout(
     isShowcasing = isShowcasing,
     onFinish = { isShowcasing = false }
 ) {
-    //screen content here
+    // screen content here
     Column(
         modifier = Modifier
             .fillMaxSize()
@@ -48,17 +48,24 @@ ShowcaseLayout(
 
 #### Step 2
 
-Wrap the composables you want to showcase with `Showcase()`, Lets say we want to showcase the first
+In composables you want to showcase on the modifier use `Modifier.showcase()`, Lets say we want to
+showcase the first
 text "ShowcaseLayout Test 1"
 
 ```kotlin
-    Showcase(
-    //should start with 1 and increment with 1 for each new composable you wrap with Showcase()
-    k = 1, message =
-) {
-    Text(text = "ShowcaseLayout Test 1")
-}
+
+Text(
+    modifier = Modifier.showcase(
+        // should start with 1 and increment with 1 for each new composable you wrap with Showcase()
+        k = 1,
+        message =
+    ),
+    text = "ShowcaseLayout Test 1"
+)
+
 ```
+
+you also use the old method by wrap the composables you want to showcase with `Showcase()`
 
 #### Step 3
 
@@ -135,17 +142,17 @@ Use `ShowcaseMsg()` to add a message and customize it with arrow, background and
 
 ```kotlin
 ShowcaseMsg(
-    //the message text to be displayed
+    // the message text to be displayed
     "Track your phone usage from here",
-    //text style for the message text
+    // text style for the message text
     textStyle = TextStyle(color = Color(0xFF827717)),
-    //a background color for the text
+    // a background color for the text
     msgBackground = MaterialTheme.colors.primary,
-    //control corner radius of msgBackground
+    // control corner radius of msgBackground
     roundedCorner = 15.dp,
-    //determin if the message will be displayed above or below the target composable
+    // determin if the message will be displayed above or below the target composable
     gravity = Gravity.Bottom,
-    //adds an arrow to be displayed with the message
+    // adds an arrow to be displayed with the message
     arrow = Arrow(color = MaterialTheme.colors.primary)
 )
 ```
@@ -164,19 +171,19 @@ Used with ShowcaseMsg to add an arrow pointing to the target
 
 ```kotlin
 arrow = Arrow(
-    //From where the arrow will point at the target, can be: Top, Bottom, Right or Left
+    // From where the arrow will point at the target, can be: Top, Bottom, Right or Left
     targetFrom = Side.Top,
     // animates a curved arrow from the message to the target(if true targetFrom is ignored)
     // might not work properly depending on the location of the target on the screen
-    animateFromMsg = true,
+    curved = true,
     // if false then just draw a line (an arrow without head :P)
     hasHead = false,
-    //color of the arrow
+    // color of the arrow
     color = MaterialTheme.colors.primary
 )
 ``` 
 
-| Default Arrow | `animateFromMsg = true` | `hasHead = false` |
+| Default Arrow | `curved = true` | `hasHead = false` |
 | :---------------: | :---------------: | :---------------: |
 |<img src="metadata/screenshots/screenshot-1.png" align="center" alt="Screenshot"  width="250" /> | <img src="metadata/screenshots/screenshot-2.png" align="center" alt="Screenshot"  width="250" />| <img src="metadata/screenshots/screenshot-3.png" align="center" alt="Screenshot"  width="250" />|
 
@@ -184,7 +191,7 @@ arrow = Arrow(
 
 For a complete example check
 out [MainScreen.kt](https://github.com/tahaak67/ShowcaseLayoutCompose/blob/main/app/src/main/java/ly/com/tahaben/showcaselayoutcompose/ui/MainScreen.kt) \
-or clone/downoad this repository and check the app module.
+or clone/download this repository and check the app module.
 
 ## Contributing
 
