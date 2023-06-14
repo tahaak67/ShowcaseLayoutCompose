@@ -1,47 +1,51 @@
 package ly.com.tahaben.showcase_layout_compose.ui
 
+import android.annotation.SuppressLint
 import android.util.Log
 import androidx.compose.animation.AnimatedVisibility
-import androidx.compose.animation.core.animateDpAsState
-import androidx.compose.animation.core.animateOffsetAsState
-import androidx.compose.animation.core.animateSizeAsState
-import androidx.compose.animation.core.tween
+import androidx.compose.animation.core.*
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.layout.*
-import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.material.Card
-import androidx.compose.material.Text
 import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.clip
+import androidx.compose.ui.composed
+import androidx.compose.ui.geometry.CornerRadius
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.*
 import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.graphics.drawscope.rotate
 import androidx.compose.ui.input.pointer.pointerInput
-import androidx.compose.ui.layout.onGloballyPositioned
-import androidx.compose.ui.layout.positionInRoot
+import androidx.compose.ui.layout.*
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.semantics.testTag
-import androidx.compose.ui.text.style.TextAlign
-import androidx.compose.ui.unit.IntSize
-import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.sp
-import androidx.compose.ui.unit.toSize
+import androidx.compose.ui.text.*
+import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.unit.*
 import kotlinx.coroutines.delay
-import ly.com.tahaben.showcase_layout_compose.model.Gravity
-import ly.com.tahaben.showcase_layout_compose.model.ShowcaseData
-import ly.com.tahaben.showcase_layout_compose.model.ShowcaseMsg
-import ly.com.tahaben.showcase_layout_compose.model.Side
+import kotlinx.coroutines.launch
+import ly.com.tahaben.showcase_layout_compose.model.*
 import kotlin.math.PI
 import kotlin.math.atan2
 
 /**
+ *     Copyright 2023 Taha Ben Ashur (tahaak67)
+ *     Licensed under the Apache License, Version 2.0 (the "License");
+ *     you may not use this file except in compliance with the License.
+ *     You may obtain a copy of the License at
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ *     Unless required by applicable law or agreed to in writing, software
+ *     distributed under the License is distributed on an "AS IS" BASIS,
+ *     WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ *     See the License for the specific language governing permissions and
+ *     limitations under the License.
+ *
  * Created by Taha Ben Ashur (https://github.com/tahaak67) on 1,August,2022
  */
 
@@ -55,9 +59,10 @@ private const val TAG = "ShowcaseLayout"
  * @param initKey the initial value of counter, set this to 1 if you don't want a greeting screen before showcasing target.
  * @param animationDuration total animation time taken when switching from current to next target in milliseconds.
  * @param onFinish what happens when all items are showcased.
- * @param greeting greeting message, leave initKey at 0 if you want to use this.
+ * @param greeting greeting message to be shown before showcasing the first composable, leave initKey at 0 if you want to use this.
  **/
 
+@OptIn(ExperimentalTextApi::class)
 @Composable
 fun ShowcaseLayout(
     isShowcasing: Boolean,
@@ -83,32 +88,78 @@ fun ShowcaseLayout(
                 targetValue = scope.getSizeFor(currentKey),
                 animationSpec = tween(animationDuration)
             )
-            val message = scope.getMessageFor(currentKey)
+            var message by remember {
+                mutableStateOf(scope.getMessageFor(currentKey))
+            }
             val pathPortion = remember {
-                androidx.compose.animation.core.Animatable(initialValue = 0f)
+                Animatable(initialValue = 0f)
             }
 
-            var isDelayOver by remember { mutableStateOf(false) }
-            val shouldDrawArrow = (message?.arrow != null && isDelayOver)
+            var isArrowDelayOver by remember { mutableStateOf(false) }
+            val shouldDrawArrow = (message?.arrow != null && isArrowDelayOver)
             val arrowColor = message?.arrow?.color ?: Color.White
             val density = LocalDensity.current
+            val coroutineScope = rememberCoroutineScope()
+            var arrowAnimDuration by remember { mutableStateOf(message?.arrow?.animationDuration) }
+            val animMsgTextAlpha = remember { Animatable(0f) }
+            val animMsgAlpha = remember { Animatable(0f) }
+            val animArrow = remember { Animatable(0f) }
 
-            //to animate current arrow line
+            /** to animate current arrow line */
             LaunchedEffect(key1 = currentKey) {
-                pathPortion.snapTo(0f)
-                isDelayOver = false
-                //a small delay between moving to new target and drawing the next arrow
-                delay(1050)
-                isDelayOver = true
+                message = scope.getMessageFor(currentKey)
+                arrowAnimDuration = message?.arrow?.animationDuration
+                isArrowDelayOver = false
                 if (message?.arrow != null) {
-                    pathPortion.animateTo(
-                        targetValue = 1f,
-                        animationSpec = tween(
-                            durationMillis = message.arrow.animationDuration
-                        )
-                    )
+                    /** a small delay between moving to new target and drawing the next arrow */
+                    delay(animationDuration.toLong())
+                    isArrowDelayOver = true
+                    launch {
+                        message?.arrow?.let { arrow ->
+                            pathPortion.animateTo(
+                                targetValue = 1f,
+                                animationSpec = tween(
+                                    durationMillis = arrowAnimDuration
+                                        ?: arrow.animationDuration
+                                )
+                            )
+                        }
+                    }
+                    launch {
+                        message?.arrow?.let { arrow ->
+                            animArrow.animateTo(
+                                1f,
+                                tween(
+                                    durationMillis = arrowAnimDuration
+                                        ?: arrow.animationDuration
+                                )
+                            )
+                        }
+                    }
+                }
+                if (currentKey == 0) {
+                    animMsgTextAlpha.snapTo(1f)
+                } else {
+                    Log.d(TAG, "K:$currentKey enterAnim: ${message?.enterAnim}")
+                    message?.let { msg ->
+                        when (msg.enterAnim) {
+                            is MsgAnimation.FadeInOut -> {
+                                val duration = msg.enterAnim.duration
+                                animMsgAlpha.animateTo(1f, tween(duration))
+                                animMsgTextAlpha.animateTo(1f, tween(duration))
+                            }
+
+                            is MsgAnimation.None -> {
+                                animMsgAlpha.snapTo(1f)
+                                animMsgTextAlpha.snapTo(1f)
+                            }
+
+                        }
+                    }
                 }
             }
+
+            val textMeasurer = rememberTextMeasurer()
 
             Log.d(TAG, "offset :$offset")
             Canvas(
@@ -117,24 +168,50 @@ fun ShowcaseLayout(
                     .semantics { testTag = "canvas" }
                     .pointerInput(isShowcasing) {
                         detectTapGestures {
-                            //detect taps on the screen
-                            if (currentKey + 1 < scope.getHashMapSize()) {
-                                Log.d(TAG, "current key +")
-                                //hide current arrow
-                                isDelayOver = false
-                                //move to next item
-                                currentKey++
-                            } else {
-                                //showcase finished
-                                Log.d(TAG, "on tap")
-                                onFinish()
+                            /** detect taps on the screen */
+                            coroutineScope.launch {
+
+                                /** hide current arrow */
+                                arrowAnimDuration?.let { duration ->
+                                    launch {
+                                        animArrow.animateTo(0f, tween(duration / 2))
+                                    }
+                                    pathPortion.animateTo(0f, tween(duration / 2))
+                                }
+                                message?.let { msg ->
+                                    Log.d(TAG, "K:$currentKey exitAnim: ${msg.exitAnim}")
+                                    Log.d(TAG, "K:$currentKey msg: $message")
+                                    when (msg.exitAnim) {
+                                        is MsgAnimation.FadeInOut -> {
+                                            val duration = msg.enterAnim.duration
+                                            animMsgTextAlpha.animateTo(0f, tween(duration))
+                                            animMsgAlpha.animateTo(0f, tween(duration))
+                                        }
+
+                                        is MsgAnimation.None -> {
+                                            animMsgTextAlpha.snapTo(0f)
+                                            animMsgAlpha.snapTo(0f)
+                                        }
+                                    }
+                                }
+
+                                if (currentKey + 1 < scope.getHashMapSize()) {
+                                    Log.d(TAG, "current key +")
+                                    /** move to next item */
+                                    currentKey++
+                                } else {
+                                    /** showcase finished */
+                                    Log.d(TAG, "finished")
+                                    onFinish()
+                                }
+                                isArrowDelayOver = false
                             }
                             Log.d(TAG, "tapped here $it")
                         }
                     },
                 onDraw = {
 
-                    //make transparent background path around the target composable
+                    /** make transparent background path around the target composable */
                     val showcasePath = Path().apply {
                         lineTo(size.width, 0f)
                         lineTo(size.width, size.height)
@@ -156,7 +233,7 @@ fun ShowcaseLayout(
                         lineTo(offset.x, offset.y)
                         close()
                     }
-                    //draw the showcasePath
+                    /** draw the showcasePath */
                     drawPath(
                         path = showcasePath,
                         color = if (isDarkLayout) Color.White else Color.Black,
@@ -165,9 +242,9 @@ fun ShowcaseLayout(
                     val hasArrowHead = message?.arrow?.hasHead == true
 
                     if (currentKey > 0 && shouldDrawArrow) {
-                        //draw arrow line
+                        /** draw arrow line */
                         val arrowPath = Path().apply {
-                            if (message?.arrow?.animateFromMsg == true) {
+                            if (message?.arrow?.curved == true) {
                                 moveTo(
                                     (maxWidth / 2).toPx(),
                                     offset.y + itemSize.height + 200
@@ -192,19 +269,21 @@ fun ShowcaseLayout(
                                         )
                                         lineTo(
                                             offset.x + (itemSize.width / 2),
-                                            if (hasArrowHead) offset.y - 30 else offset.y
+                                            if (hasArrowHead) offset.y - 60 else offset.y
                                         )
                                     }
+
                                     Side.Bottom -> {
                                         moveTo(
                                             offset.x + (itemSize.width / 2),
-                                            offset.y + (itemSize.height + 200)
+                                            offset.y + (itemSize.height + 250)
                                         )
                                         lineTo(
                                             offset.x + (itemSize.width / 2),
-                                            if (hasArrowHead) offset.y + itemSize.height + 30 else offset.y + itemSize.height
+                                            if (hasArrowHead) offset.y + itemSize.height + 20 else offset.y + itemSize.height
                                         )
                                     }
+
                                     Side.Left -> {
                                         moveTo(
                                             offset.x - 200,
@@ -215,6 +294,7 @@ fun ShowcaseLayout(
                                             offset.y + (itemSize.height / 2)
                                         )
                                     }
+
                                     Side.Right -> {
                                         moveTo(
                                             offset.x + (itemSize.width + 200),
@@ -225,6 +305,7 @@ fun ShowcaseLayout(
                                             offset.y + (itemSize.height / 2)
                                         )
                                     }
+
                                     null -> Unit
                                 }
                             }
@@ -237,6 +318,7 @@ fun ShowcaseLayout(
                             setPath(arrowPath.asAndroidPath(), false)
                             getSegment(0f, pathPortion.value * length, outPath, true)
                             getPosTan(pathPortion.value * length, pos, tan)
+                            Log.d(TAG, "pos:${pos} tan:${tan}")
                         }
                         drawPath(
                             path = outPath.asComposePath(),
@@ -244,7 +326,7 @@ fun ShowcaseLayout(
                             style = Stroke(width = 5.dp.toPx(), cap = StrokeCap.Round)
                         )
 
-                        //draw the arrow head (and rotate if needed)
+                        /** draw the arrow head (and rotate if needed) */
                         if (message?.arrow?.hasHead == true) {
                             val x = pos[0]
                             val y = pos[1]
@@ -258,78 +340,130 @@ fun ShowcaseLayout(
                                         lineTo(x + 30f, y + 60f)
                                         close()
                                     },
-                                    color = arrowColor
+                                    color = arrowColor,
+                                    alpha = animArrow.value
                                 )
                             }
                         }
 
                     }
+                    message?.let { msg ->
+                        /**
+                        Create a measurer for the message with limited constraints and a 'Visible'
+                        overflow to make the text go to a new line if the screen width doesn't fit
+                        one line.
+                         */
+                        val textResult = textMeasurer.measure(
+                            msg.text,
+                            style = msg.textStyle,
+                            overflow = TextOverflow.Visible,
+                            constraints = Constraints(0, constraints.maxWidth - 90)
+                        )
+
+                        /** Determine if message will be shown on top or below target */
+                        val yOffset =
+                            if (currentKey == 0) (size.height / 2) else with(density) {
+                                val currentItemYPosition = scope.getPositionFor(currentKey).y
+                                val currentItemHeight = scope.getSizeFor(currentKey).height
+                                when (msg.gravity) {
+                                    Gravity.Top -> {
+                                        currentItemYPosition + 230
+                                    }
+
+                                    Gravity.Bottom -> {
+                                        currentItemYPosition + currentItemHeight + 230
+                                    }
+
+                                    Gravity.Auto -> {
+                                        val topPosition =
+                                            currentItemYPosition - 230
+                                        if (topPosition < 0) {
+                                            Log.d(TAG, "Not enough space on top show msg on bottom")
+                                            currentItemYPosition + currentItemHeight + 230
+                                        } else {
+                                            Log.d(TAG, "message can be shown on top")
+                                            topPosition
+                                        }
+                                    }
+                                }
+                            }
+                        val halfWidth = (size.width / 2)
+                        val messageWidthHalf = textResult.size.width / 2
+
+                        /**
+                        Determine the horizontal alignment of the message, we try to center it
+                        to the target but if the target is on the edge of the screen the message
+                        will get cut off, if that's the case we align the message Start or End to
+                        the target Start or End as appropriate
+                         */
+                        val xOffset = if (currentKey == 0) {
+                            halfWidth - messageWidthHalf
+                        } else {
+                            val currentItemXPosition = scope.getPositionFor(currentKey).x
+                            val currentItemWidth = scope.getSizeFor(currentKey).width
+                            val currentItemXMiddlePoint =
+                                currentItemXPosition + (currentItemWidth / 2)
+                            when {
+                                (currentItemXMiddlePoint < halfWidth) -> {
+                                    Log.d(TAG, "layout on start half")
+                                    if ((currentItemXMiddlePoint - messageWidthHalf) < 0) {
+                                        currentItemXPosition
+                                    } else {
+                                        currentItemXMiddlePoint - messageWidthHalf
+                                    }
+                                }
+
+                                (currentItemXMiddlePoint == halfWidth) -> {
+                                    Log.d(TAG, "layout in middle")
+                                    currentItemXMiddlePoint - messageWidthHalf
+                                }
+
+                                else -> {
+                                    Log.d(TAG, "layout on end half")
+                                    if (currentItemXMiddlePoint + messageWidthHalf > size.width) {
+                                        currentItemXPosition + currentItemWidth - textResult.size.width
+                                    } else {
+                                        currentItemXMiddlePoint - messageWidthHalf
+                                    }
+                                }
+                            }
+                        }
+
+                        val textOffset = Offset(xOffset, yOffset)
+                        val cardOffset = Offset(textOffset.x - 18, textOffset.y - 18)
+                        val cardSize = IntSize(
+                            textResult.size.width + 36,
+                            textResult.size.height + 36
+                        ).toSize()
+                        if (msg.roundedCorner == 0.dp) {
+                            drawRect(
+                                msg.msgBackground ?: Color.Transparent,
+                                topLeft = cardOffset,
+                                size = cardSize,
+                                alpha = animMsgAlpha.value
+                            )
+                        } else {
+                            drawRoundRect(
+                                msg.msgBackground ?: Color.Transparent,
+                                topLeft = cardOffset,
+                                size = cardSize,
+                                cornerRadius = CornerRadius(msg.roundedCorner.value),
+                                alpha = animMsgAlpha.value
+                            )
+                        }
+                        drawText(textResult, topLeft = textOffset, alpha = animMsgTextAlpha.value)
+                    }
                 }
             )
 
-
-            message?.let { msg ->
-                Log.d(TAG, "max: x:${maxWidth} y:${maxHeight}")
-                val yDp = if (currentKey == 0) (maxHeight / 2) else with(density) {
-                    //Determine if message will be shown on top or below target
-                    when (msg.gravity) {
-                        Gravity.Top -> {
-                            scope.getPositionFor(currentKey).y.toDp() - scope.getSizeFor(currentKey).height.toDp() - 10.toDp()
-                        }
-                        Gravity.Bottom -> {
-                            scope.getPositionFor(currentKey).y.toDp() + scope.getSizeFor(currentKey).height.toDp() + 150.toDp()
-                        }
-                        Gravity.Auto -> {
-                            val topPosition =
-                                scope.getPositionFor(currentKey).y.toDp() - scope.getSizeFor(
-                                    currentKey
-                                ).height.toDp() - 150.toDp()
-                            if (topPosition < 0.dp) {
-                                Log.d(TAG, "its true")
-                                scope.getPositionFor(currentKey).y.toDp() + scope.getSizeFor(
-                                    currentKey
-                                ).height.dp + 24.dp
-                            } else {
-                                Log.d(TAG, "its Not true")
-                                topPosition
-                            }
-                        }
-                    }
-                }
-                val yAnim by animateDpAsState(targetValue = yDp)
-                Log.d(TAG, "msg , y:$yDp")
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.Center
-                ) {
-
-                    Card(
-                        Modifier
-                            .offset(y = yAnim)
-                            .padding(horizontal = 16.dp)
-                            .clip(RoundedCornerShape(msg.roundedCorner)),
-                        backgroundColor = msg.msgBackground ?: Color.Transparent,
-                        elevation = if (msg.msgBackground != null) 18.dp else 0.dp
-                    ) {
-                        Text(
-                            text = msg.text,
-                            style = msg.textStyle,
-                            modifier = Modifier
-                                .padding(12.dp),
-                            fontSize = 16.sp,
-                            textAlign = TextAlign.Center
-                        )
-                    }
-                }
-            }
-            Log.d(TAG, "calc : ${offset.y + itemSize.height - (maxHeight.value / 2)}")
+            Log.d(TAG, "calc: ${offset.y + itemSize.height - (maxHeight.value / 2)}")
         }
     }
 }
 
 
 class ShowcaseScopeImpl(greeting: ShowcaseMsg?) : ShowcaseScope {
-    private val array = HashMap<Int, ShowcaseData>()
+    private val showcaseDataHashMap = HashMap<Int, ShowcaseData>()
 
     @Composable
     override fun Showcase(
@@ -338,37 +472,49 @@ class ShowcaseScopeImpl(greeting: ShowcaseMsg?) : ShowcaseScope {
         itemContent: @Composable () -> Unit
     ) {
         Box(modifier = Modifier.onGloballyPositioned {
-            Log.d(TAG, "putt $k")
-            Log.d(TAG, "putt ${it.size} p=${it.positionInRoot()}")
-            array[k] = ShowcaseData(it.size, it.positionInRoot(), message)
-            Log.d(TAG, "array = $array")
+            Log.d(TAG, "key: $k")
+            Log.d(TAG, "size: ${it.size} position: ${it.positionInRoot()}")
+            showcaseDataHashMap[k] = ShowcaseData(it.size, it.positionInRoot(), message)
+            Log.d(TAG, "showcase map: $showcaseDataHashMap")
         }) {
 
             itemContent()
         }
     }
 
+    @SuppressLint("UnnecessaryComposedModifier")
+    override fun Modifier.showcase(k: Int, message: ShowcaseMsg?): Modifier = composed {
+        onGloballyPositioned {
+            Log.d(TAG, "key: $k")
+            Log.d(TAG, "size: ${it.size} position: ${it.positionInRoot()}")
+            showcaseDataHashMap[k] = ShowcaseData(it.size, it.positionInRoot(), message)
+            Log.d(TAG, "showcase map: $showcaseDataHashMap")
+        }
+    }
+
     init {
-        array[0] = ShowcaseData(IntSize(0, 0), Offset(0f, 0f), greeting)
+        showcaseDataHashMap[0] = ShowcaseData(IntSize(0, 0), Offset(0f, 0f), greeting)
     }
 
     fun getSizeFor(k: Int): Size {
-        val s = array[k]?.size?.toSize() ?: Size(0f, 0f)
-        Log.d(TAG, "got size: $s")
+        val s = showcaseDataHashMap[k]?.size?.toSize() ?: Size(0f, 0f)
+        Log.d(TAG, "showcase map size: $s")
         return s
     }
 
     fun getPositionFor(k: Int): Offset {
-        val p = array[k]?.position ?: Offset(0f, 0f)
-        Log.d(TAG, "get position: $p")
+        if (k == 0) {
+            return showcaseDataHashMap[1]?.position ?: Offset(0f, 0f)
+        }
+        val p = showcaseDataHashMap[k]?.position ?: Offset(0f, 0f)
         return p
     }
 
     fun getHashMapSize(): Int {
-        return array.size
+        return showcaseDataHashMap.size
     }
 
     fun getMessageFor(currentKey: Int): ShowcaseMsg? {
-        return array[currentKey]?.message
+        return showcaseDataHashMap[currentKey]?.message
     }
 }
