@@ -150,10 +150,13 @@ ShowcaseMsg(
     msgBackground = MaterialTheme.colors.primary,
     // control corner radius of msgBackground
     roundedCorner = 15.dp,
-    // determin if the message will be displayed above or below the target composable
+    // determine if the message will be displayed above or below the target composable
     gravity = Gravity.Bottom,
     // adds an arrow to be displayed with the message
-    arrow = Arrow(color = MaterialTheme.colors.primary)
+    arrow = Arrow(color = MaterialTheme.colors.primary),
+    // starting from version 1.0.3 ShowcaseMsg will have an enter and exit animation of FadeInOut by default you can disable it by using MsgAnimation.None
+    enterAnim = MsgAnimation.FadeInOut(),
+    exitAnim = MsgAnimation.FadeInOut()
 )
 ```
 

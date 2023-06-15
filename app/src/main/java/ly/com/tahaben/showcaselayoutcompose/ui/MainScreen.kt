@@ -206,7 +206,7 @@ fun MainScreen(
                             gravity = Gravity.Bottom,
                             arrow = Arrow(color = MaterialTheme.colors.primary),
                             enterAnim = MsgAnimation.FadeInOut(),
-                            exitAnim = MsgAnimation.None
+                            exitAnim = MsgAnimation.FadeInOut()
                         )
                     ) {
                         MainScreenCard(
