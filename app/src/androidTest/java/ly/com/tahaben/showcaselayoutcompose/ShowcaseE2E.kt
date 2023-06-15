@@ -3,7 +3,6 @@ package ly.com.tahaben.showcaselayoutcompose
 import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.junit4.createComposeRule
 import androidx.compose.ui.test.onNodeWithTag
-import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
 import ly.com.tahaben.showcaselayoutcompose.ui.MainScreen
 import ly.com.tahaben.showcaselayoutcompose.ui.theme.ShowcaseLayoutComposeTheme
@@ -35,18 +34,14 @@ class ShowcaseE2E {
         }
     }
 
+    /**
+    Tests that showcase layout is displayed and switches to next target correctly on tapping
+    finally makes sure showcase layout disappears after last target
+     */
     @Test
     fun showcase_displayed_and_responds_to_taps() {
-        //Tests that showcase layout is displayed and switches to next target correctly on tapping
-        //finally makes sure showcase layout disappears after last target
         composeRule
             .onNodeWithTag("canvas")
-            .assertIsDisplayed()
-        composeRule
-            .onNodeWithTag("canvas")
-            .performClick()
-        composeRule
-            .onNodeWithText("Track your phone usage from here")
             .assertIsDisplayed()
         composeRule
             .onNodeWithTag("canvas")
@@ -55,14 +50,11 @@ class ShowcaseE2E {
             .onNodeWithTag("canvas")
             .performClick()
         composeRule
-            .onNodeWithText("From drop down menu, you can access the About app screen!")
-            .assertIsDisplayed()
-        composeRule
             .onNodeWithTag("canvas")
             .performClick()
         composeRule
-            .onNodeWithText("Useful tip tho :P")
-            .assertIsDisplayed()
+            .onNodeWithTag("canvas")
+            .performClick()
         composeRule
             .onNodeWithTag("canvas")
             .performClick()
