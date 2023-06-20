@@ -104,26 +104,38 @@ fun MainScreen(
 
                     // Creating Icon button for dropdown menu
                     IconButton(onClick = { mDisplayMenu = !mDisplayMenu }) {
-                        Showcase(
-                            k = 3,
-                            message = ShowcaseMsg(
-                                "From drop down menu, you can access the About app screen!",
-                                textStyle = TextStyle(
-                                    color = MaterialTheme.colors.onPrimary,
-                                    fontSize = 24.sp
-                                ),
-                                msgBackground = MaterialTheme.colors.primary,
-                                roundedCorner = 25.dp,
-                                arrow = Arrow(
-                                    curved = true,
-                                    color = MaterialTheme.colors.primary
-                                ),
-                                enterAnim = MsgAnimation.FadeInOut(),
-                                exitAnim = MsgAnimation.FadeInOut()
-                            )
-                        ) {
-                            Icon(Icons.Default.MoreVert, stringResource(R.string.drop_down_menu))
-                        }
+                        Icon(
+                            modifier = Modifier.showcase(
+                                k = 3,
+                                message = ShowcaseMsg(
+                                    buildAnnotatedString {
+                                        append("From the ")
+                                        pushStyle(SpanStyle(fontWeight = FontWeight.Bold))
+                                        append("drop down menu")
+                                        pop()
+                                        append(", you can access the ")
+                                        pushStyle(SpanStyle(fontWeight = FontWeight.Bold))
+                                        append("About app")
+                                        pop()
+                                        append(" screen!")
+                                    },
+                                    textStyle = TextStyle(
+                                        color = MaterialTheme.colors.onPrimary,
+                                        fontSize = 24.sp
+                                    ),
+                                    msgBackground = MaterialTheme.colors.primary,
+                                    roundedCorner = 25.dp,
+                                    arrow = Arrow(
+                                        curved = true,
+                                        color = MaterialTheme.colors.primary
+                                    ),
+                                    enterAnim = MsgAnimation.FadeInOut(),
+                                    exitAnim = MsgAnimation.FadeInOut()
+                                )
+                            ),
+                            imageVector = Icons.Default.MoreVert,
+                            contentDescription = stringResource(id = R.string.drop_down_menu),
+                        )
                     }
 
                     // Creating a dropdown menu
@@ -197,24 +209,28 @@ fun MainScreen(
                     modifier = Modifier.fillMaxWidth(),
                     horizontalArrangement = Arrangement.SpaceEvenly
                 ) {
-                    Showcase(
-                        k = 1, message =
-                        ShowcaseMsg(
-                            "Track your phone usage from here",
-                            textStyle = TextStyle(color = Color(0xFF827717), fontSize = 18.sp),
-                            msgBackground = MaterialTheme.colors.primary,
-                            gravity = Gravity.Bottom,
-                            arrow = Arrow(color = MaterialTheme.colors.primary),
-                            enterAnim = MsgAnimation.FadeInOut(),
-                            exitAnim = MsgAnimation.FadeInOut()
-                        )
-                    ) {
+
                         MainScreenCard(
+                            modifier = Modifier.showcase(
+                                k = 1, message =
+                                ShowcaseMsg(
+                                    "Track your phone usage from here",
+                                    textStyle = TextStyle(
+                                        color = Color(0xFF827717),
+                                        fontSize = 18.sp
+                                    ),
+                                    msgBackground = MaterialTheme.colors.primary,
+                                    gravity = Gravity.Bottom,
+                                    arrow = Arrow(color = MaterialTheme.colors.primary),
+                                    enterAnim = MsgAnimation.FadeInOut(),
+                                    exitAnim = MsgAnimation.FadeInOut()
+                                )
+                            ),
                             text = stringResource(R.string.usage),
                             iconId = R.drawable.ic_usage,
                             status = ""
                         ) { }
-                    }
+
                     MainScreenCard(
                         text = stringResource(R.string.notifications_filter),
                         iconId = R.drawable.ic_notification,
@@ -235,15 +251,15 @@ fun MainScreen(
                             id = R.string.disabled
                         )
                     ) { }
-                    Showcase(k = 2, message = null) {
                         MainScreenCard(
+                            modifier = Modifier.showcase(k = 2, message = null),
                             text = stringResource(R.string.infinite_scrolling),
                             iconId = R.drawable.ic_swipe_vertical_24,
                             status = if (isInfiniteScrollBlockerEnabled) stringResource(id = R.string.enabled) else stringResource(
                                 id = R.string.disabled
                             )
                         ) { }
-                    }
+
                 }
                 Spacer(modifier = Modifier.height(spacing.spaceMedium))
             }

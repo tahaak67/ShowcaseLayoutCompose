@@ -3,7 +3,14 @@ package ly.com.tahaben.showcaselayoutcompose.ui
 import androidx.annotation.DrawableRes
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.clickable
-import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.Card
 import androidx.compose.material.MaterialTheme
@@ -20,6 +27,7 @@ import ly.com.tahaben.showcaselayoutcompose.ui.theme.LocalSpacing
 
 @Composable
 fun MainScreenCard(
+    modifier: Modifier = Modifier,
     text: String,
     @DrawableRes iconId: Int?,
     status: String,
@@ -27,7 +35,7 @@ fun MainScreenCard(
 ) {
     val spacing = LocalSpacing.current
     Card(
-        modifier = Modifier
+        modifier = modifier
             .height(150.dp)
             .width(150.dp)
             .clip(

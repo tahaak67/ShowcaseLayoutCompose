@@ -56,7 +56,7 @@ text "ShowcaseLayout Test 1"
 
 Text(
     modifier = Modifier.showcase(
-        // should start with 1 and increment with 1 for each new composable you wrap with Showcase()
+        // should start with 1 and increment with 1 for each time you use Modifier.showcase()
         k = 1,
         message =
     ),
@@ -127,11 +127,25 @@ total animation time taken when switching from current to next target in millise
 1000ms).
 
 ```kotlin
-    ShowcaseLayout(
+    val greetingString = buildAnnotatedString {
+    append("Welcome to ")
+    pushStyle(SpanStyle(fontWeight = FontWeight.Bold))
+    append("My App")
+    pop()
+    append(", let's take you on a quick tour!")
+    pushStyle(SpanStyle(fontWeight = FontWeight.Bold))
+    append("\n Tap anywhere")
+    pop()
+    append(" to continue")
+}
+ShowcaseLayout(
     isShowcasing = isShowcasing,
     onFinish = { isShowcasing = false },
     isDarkLayout = isSystemInDarkTheme(),
-    greeting = ShowcaseMsg("Welcome to my app, lets take you on a quick tour!, press anywhere to continue"),
+    greeting = ShowcaseMsg(
+        text = greetingString, // You can use an annotated string or a normal string here
+        textStyle = TextStyle(color = Color.White, textAlign = TextAlign.Center)
+    ),
     animationDuration = 1000
 ) 
 ```
