@@ -1,34 +1,56 @@
 package ly.com.tahaben.showcase_layout_compose.ui
 
-import android.annotation.SuppressLint
-import android.util.Log
 import androidx.compose.animation.AnimatedVisibility
-import androidx.compose.animation.core.*
+import androidx.compose.animation.core.Animatable
+import androidx.compose.animation.core.animateOffsetAsState
+import androidx.compose.animation.core.animateSizeAsState
+import androidx.compose.animation.core.tween
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.gestures.detectTapGestures
-import androidx.compose.foundation.layout.*
-import androidx.compose.runtime.*
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.BoxWithConstraints
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.composed
 import androidx.compose.ui.geometry.CornerRadius
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Size
-import androidx.compose.ui.graphics.*
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.Path
+import androidx.compose.ui.graphics.PathMeasure
+import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.graphics.drawscope.rotate
 import androidx.compose.ui.input.pointer.pointerInput
-import androidx.compose.ui.layout.*
+import androidx.compose.ui.layout.onGloballyPositioned
+import androidx.compose.ui.layout.positionInRoot
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.semantics.testTag
-import androidx.compose.ui.text.*
+import androidx.compose.ui.text.ExperimentalTextApi
+import androidx.compose.ui.text.drawText
+import androidx.compose.ui.text.rememberTextMeasurer
 import androidx.compose.ui.text.style.TextOverflow
-import androidx.compose.ui.unit.*
+import androidx.compose.ui.unit.Constraints
+import androidx.compose.ui.unit.IntSize
+import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.toSize
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
-import ly.com.tahaben.showcase_layout_compose.model.*
+import ly.com.tahaben.showcase_layout_compose.model.Gravity
+import ly.com.tahaben.showcase_layout_compose.model.MsgAnimation
+import ly.com.tahaben.showcase_layout_compose.model.ShowcaseData
+import ly.com.tahaben.showcase_layout_compose.model.ShowcaseMsg
+import ly.com.tahaben.showcase_layout_compose.model.Side
 import kotlin.math.PI
 import kotlin.math.atan2
 
@@ -140,7 +162,7 @@ fun ShowcaseLayout(
                 if (currentKey == 0) {
                     animMsgTextAlpha.snapTo(1f)
                 } else {
-                    Log.d(TAG, "K:$currentKey enterAnim: ${message?.enterAnim}")
+                    println(TAG + "K:$currentKey enterAnim: ${message?.enterAnim}")
                     message?.let { msg ->
                         when (msg.enterAnim) {
                             is MsgAnimation.FadeInOut -> {
@@ -161,7 +183,7 @@ fun ShowcaseLayout(
 
             val textMeasurer = rememberTextMeasurer()
 
-            Log.d(TAG, "offset :$offset")
+            println(TAG + "offset :$offset")
             Canvas(
                 modifier = Modifier
                     .fillMaxSize()
@@ -176,11 +198,12 @@ fun ShowcaseLayout(
                                     launch {
                                         animArrow.animateTo(0f, tween(duration / 2))
                                     }
-                                    pathPortion.animateTo(0f, tween(duration / 2))
+                                    // subtracting Float.MIN_VALUE here to avoid a tiny part of the path left on IOS
+                                    pathPortion.animateTo(0f - Float.MIN_VALUE, tween(duration / 2))
                                 }
                                 message?.let { msg ->
-                                    Log.d(TAG, "K:$currentKey exitAnim: ${msg.exitAnim}")
-                                    Log.d(TAG, "K:$currentKey msg: $message")
+                                    println(TAG + "K:$currentKey exitAnim: ${msg.exitAnim}")
+                                    println(TAG + "K:$currentKey msg: $message")
                                     when (msg.exitAnim) {
                                         is MsgAnimation.FadeInOut -> {
                                             val duration = msg.enterAnim.duration
@@ -196,17 +219,19 @@ fun ShowcaseLayout(
                                 }
 
                                 if (currentKey + 1 < scope.getHashMapSize()) {
-                                    Log.d(TAG, "current key +")
+                                    println(TAG + "current key +")
                                     /** move to next item */
                                     currentKey++
                                 } else {
                                     /** showcase finished */
-                                    Log.d(TAG, "finished")
+                                    println(TAG + "finished")
                                     onFinish()
+                                    delay(animationDuration.toLong())
+                                    currentKey = initKey
                                 }
                                 isArrowDelayOver = false
                             }
-                            Log.d(TAG, "tapped here $it")
+                            println(TAG + "tapped here $it")
                         }
                     },
                 onDraw = {
@@ -311,17 +336,25 @@ fun ShowcaseLayout(
                             }
                         }
 
-                        val outPath = android.graphics.Path()
+                        val outPath = Path()
                         val pos = FloatArray(2)
                         val tan = FloatArray(2)
-                        android.graphics.PathMeasure().apply {
-                            setPath(arrowPath.asAndroidPath(), false)
+                        PathMeasure().apply {
+                            setPath(arrowPath, false)
                             getSegment(0f, pathPortion.value * length, outPath, true)
-                            getPosTan(pathPortion.value * length, pos, tan)
-                            Log.d(TAG, "pos:${pos} tan:${tan}")
+//                            getPosTan(pathPortion.value * length, pos, tan)
+                            getPosition(pathPortion.value * length).apply {
+                                pos[0] = x
+                                pos[1] = y
+                            }
+                            getTangent(pathPortion.value * length).apply {
+                                tan[0] = x
+                                tan[1] = y
+                            }
+                            println(TAG + "pos:${pos} tan:${tan}")
                         }
                         drawPath(
-                            path = outPath.asComposePath(),
+                            path = outPath,
                             color = arrowColor,
                             style = Stroke(width = 5.dp.toPx(), cap = StrokeCap.Round)
                         )
@@ -331,7 +364,7 @@ fun ShowcaseLayout(
                             val x = pos[0]
                             val y = pos[1]
                             val degrees = -atan2(tan[0], tan[1]) * (180f / PI.toFloat()) - 180f
-                            Log.d(TAG, "max canvas: x:${size.width} y:${size.height}")
+                            println(TAG + "max canvas: x:${size.width} y:${size.height}")
                             rotate(degrees = degrees, pivot = Offset(x, y)) {
                                 drawPath(
                                     path = Path().apply {
@@ -378,10 +411,10 @@ fun ShowcaseLayout(
                                         val topPosition =
                                             currentItemYPosition - 230
                                         if (topPosition < 0) {
-                                            Log.d(TAG, "Not enough space on top show msg on bottom")
+                                            println(TAG + "Not enough space on top show msg on bottom")
                                             currentItemYPosition + currentItemHeight + 230
                                         } else {
-                                            Log.d(TAG, "message can be shown on top")
+                                            println(TAG + "message can be shown on top")
                                             topPosition
                                         }
                                     }
@@ -405,7 +438,7 @@ fun ShowcaseLayout(
                                 currentItemXPosition + (currentItemWidth / 2)
                             when {
                                 (currentItemXMiddlePoint < halfWidth) -> {
-                                    Log.d(TAG, "layout on start half")
+                                    println(TAG + "layout on start half")
                                     if ((currentItemXMiddlePoint - messageWidthHalf) < 0) {
                                         currentItemXPosition
                                     } else {
@@ -414,12 +447,12 @@ fun ShowcaseLayout(
                                 }
 
                                 (currentItemXMiddlePoint == halfWidth) -> {
-                                    Log.d(TAG, "layout in middle")
+                                    println(TAG + "layout in middle")
                                     currentItemXMiddlePoint - messageWidthHalf
                                 }
 
                                 else -> {
-                                    Log.d(TAG, "layout on end half")
+                                    println(TAG + "layout on end half")
                                     if (currentItemXMiddlePoint + messageWidthHalf > size.width) {
                                         currentItemXPosition + currentItemWidth - textResult.size.width
                                     } else {
@@ -456,12 +489,10 @@ fun ShowcaseLayout(
                 }
             )
 
-            Log.d(TAG, "calc: ${offset.y + itemSize.height - (maxHeight.value / 2)}")
+            println(TAG + "calc: ${offset.y + itemSize.height - (maxHeight.value / 2)}")
         }
     }
 }
-
-
 class ShowcaseScopeImpl(greeting: ShowcaseMsg?) : ShowcaseScope {
     private val showcaseDataHashMap = HashMap<Int, ShowcaseData>()
 
@@ -472,23 +503,22 @@ class ShowcaseScopeImpl(greeting: ShowcaseMsg?) : ShowcaseScope {
         itemContent: @Composable () -> Unit
     ) {
         Box(modifier = Modifier.onGloballyPositioned {
-            Log.d(TAG, "key: $k")
-            Log.d(TAG, "size: ${it.size} position: ${it.positionInRoot()}")
+            println(TAG + "key: $k")
+            println(TAG + "size: ${it.size} position: ${it.positionInRoot()}")
             showcaseDataHashMap[k] = ShowcaseData(it.size, it.positionInRoot(), message)
-            Log.d(TAG, "showcase map: $showcaseDataHashMap")
+            println(TAG + "showcase map: $showcaseDataHashMap")
         }) {
 
             itemContent()
         }
     }
-
-    @SuppressLint("UnnecessaryComposedModifier")
+    
     override fun Modifier.showcase(k: Int, message: ShowcaseMsg?): Modifier = composed {
         onGloballyPositioned {
-            Log.d(TAG, "key: $k")
-            Log.d(TAG, "size: ${it.size} position: ${it.positionInRoot()}")
+            println(TAG + "key: $k")
+            println(TAG + "size: ${it.size} position: ${it.positionInRoot()}")
             showcaseDataHashMap[k] = ShowcaseData(it.size, it.positionInRoot(), message)
-            Log.d(TAG, "showcase map: $showcaseDataHashMap")
+            println(TAG + "showcase map: $showcaseDataHashMap")
         }
     }
 
@@ -498,7 +528,7 @@ class ShowcaseScopeImpl(greeting: ShowcaseMsg?) : ShowcaseScope {
 
     fun getSizeFor(k: Int): Size {
         val s = showcaseDataHashMap[k]?.size?.toSize() ?: Size(0f, 0f)
-        Log.d(TAG, "showcase map size: $s")
+        println(TAG + "showcase map size: $s")
         return s
     }
 
