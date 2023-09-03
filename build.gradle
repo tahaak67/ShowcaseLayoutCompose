@@ -7,10 +7,14 @@ plugins {
     id 'com.android.application' version '8.1.1' apply false
     id 'com.android.library' version '8.1.1' apply false
     id 'org.jetbrains.kotlin.android' version '1.9.0' apply false
-    id("io.github.gradle-nexus.publish-plugin") version "1.2.0"
+    id("io.github.gradle-nexus.publish-plugin") version "1.3.0"
 }
 
 task clean(type: Delete) {
     delete rootProject.buildDir
+}
+def signingTasks = tasks.withType(Sign)
+tasks.withType(PublishToMavenRepository).configureEach {
+    mustRunAfter(signingTasks)
 }
 apply from: "${rootDir}/scripts/publish-root.gradle"

@@ -133,8 +133,10 @@ afterEvaluate {
         }
 
     }
+    //https://github.com/gradle-nexus/publish-plugin/issues/208
 
 }
+
 
 signing {
 
