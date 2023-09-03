@@ -15,6 +15,7 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
@@ -36,7 +37,6 @@ import androidx.compose.ui.layout.positionInRoot
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.semantics.testTag
-import androidx.compose.ui.text.ExperimentalTextApi
 import androidx.compose.ui.text.drawText
 import androidx.compose.ui.text.rememberTextMeasurer
 import androidx.compose.ui.text.style.TextOverflow
@@ -85,7 +85,6 @@ private const val TAG = "ShowcaseLayout"
  * @param greeting greeting message to be shown before showcasing the first composable, leave initKey at 0 if you want to use this.
  **/
 
-@OptIn(ExperimentalTextApi::class)
 @Composable
 fun ShowcaseLayout(
     isShowcasing: Boolean,
@@ -97,7 +96,7 @@ fun ShowcaseLayout(
     content: @Composable ShowcaseScope.() -> Unit
 ) {
     var currentKey by remember {
-        mutableStateOf(initKey)
+        mutableIntStateOf(initKey)
     }
     val scope = ShowcaseScopeImpl(greeting)
     scope.content()
@@ -105,11 +104,13 @@ fun ShowcaseLayout(
         AnimatedVisibility(isShowcasing, enter = fadeIn(), exit = fadeOut()) {
             val offset by animateOffsetAsState(
                 targetValue = scope.getPositionFor(currentKey),
-                animationSpec = tween(animationDuration)
+                animationSpec = tween(animationDuration),
+                label = "item offset anim"
             )
             val itemSize by animateSizeAsState(
                 targetValue = scope.getSizeFor(currentKey),
-                animationSpec = tween(animationDuration)
+                animationSpec = tween(animationDuration),
+                label = "item size anim"
             )
             var message by remember {
                 mutableStateOf(scope.getMessageFor(currentKey))
