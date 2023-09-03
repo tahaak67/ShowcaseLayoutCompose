@@ -43,6 +43,7 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import kotlinx.coroutines.delay
+import ly.com.tahaben.showcase_layout_compose.domain.ShowcaseEventListener
 import ly.com.tahaben.showcase_layout_compose.model.Arrow
 import ly.com.tahaben.showcase_layout_compose.model.Gravity
 import ly.com.tahaben.showcase_layout_compose.model.MsgAnimation
@@ -66,7 +67,7 @@ fun MainScreen(
         mutableStateOf(false)
     }
     LaunchedEffect(key1 = true) {
-        delay(0)
+        delay(500)
         isShowcasing = true
     }
     val greetingString = buildAnnotatedString {
@@ -90,7 +91,11 @@ fun MainScreen(
             textStyle = TextStyle(color = Color.White, textAlign = TextAlign.Center)
         )
     ) {
-
+        registerEventListener(object: ShowcaseEventListener {
+            override fun onEvent(event: String) {
+                println(event)
+            }
+        })
         Column(
             modifier = Modifier
                 .fillMaxSize()

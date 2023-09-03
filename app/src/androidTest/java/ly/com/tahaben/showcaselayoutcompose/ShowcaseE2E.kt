@@ -40,6 +40,11 @@ class ShowcaseE2E {
      */
     @Test
     fun showcase_displayed_and_responds_to_taps() {
+        /**
+        Wait 500 milliseconds before testing since we set the showcase layout to show after
+        a delay see LaunchedEffect block in [MainScreen]
+         */
+        composeRule.mainClock.advanceTimeBy(500)
         composeRule
             .onNodeWithTag("canvas")
             .assertIsDisplayed()
