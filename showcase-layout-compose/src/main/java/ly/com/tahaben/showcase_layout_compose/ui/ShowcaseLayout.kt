@@ -344,7 +344,6 @@ fun ShowcaseLayout(
                         PathMeasure().apply {
                             setPath(arrowPath, false)
                             getSegment(0f, pathPortion.value * length, outPath, true)
-//                            getPosTan(pathPortion.value * length, pos, tan)
                             getPosition(pathPortion.value * length).apply {
                                 pos[0] = x
                                 pos[1] = y
