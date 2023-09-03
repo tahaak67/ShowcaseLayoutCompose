@@ -67,7 +67,7 @@ fun MainScreen(
         mutableStateOf(false)
     }
     LaunchedEffect(key1 = true) {
-        delay(0)
+        delay(500)
         isShowcasing = true
     }
     val greetingString = buildAnnotatedString {
