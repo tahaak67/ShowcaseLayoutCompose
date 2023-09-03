@@ -2,6 +2,7 @@ package ly.com.tahaben.showcase_layout_compose.ui
 
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
+import ly.com.tahaben.showcase_layout_compose.domain.ShowcaseEventListener
 import ly.com.tahaben.showcase_layout_compose.model.ShowcaseMsg
 
 /**
@@ -39,4 +40,14 @@ interface ShowcaseScope {
      * @param message a message to display when showcasing this composable.
      **/
     fun Modifier.showcase(k: Int, message: ShowcaseMsg?): Modifier
+
+
+    var showcaseEventListener: ShowcaseEventListener?
+
+    /**
+     * registerEventListener ShowcaseScope
+     *
+     * @param eventListener the [ShowcaseEventListener] to use.
+     **/
+    fun registerEventListener(eventListener: ShowcaseEventListener)
 }

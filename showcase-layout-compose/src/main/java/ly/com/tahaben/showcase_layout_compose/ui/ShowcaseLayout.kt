@@ -46,6 +46,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.toSize
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
+import ly.com.tahaben.showcase_layout_compose.domain.ShowcaseEventListener
 import ly.com.tahaben.showcase_layout_compose.model.Gravity
 import ly.com.tahaben.showcase_layout_compose.model.MsgAnimation
 import ly.com.tahaben.showcase_layout_compose.model.ShowcaseData
@@ -162,7 +163,7 @@ fun ShowcaseLayout(
                 if (currentKey == 0) {
                     animMsgTextAlpha.snapTo(1f)
                 } else {
-                    println(TAG + "K:$currentKey enterAnim: ${message?.enterAnim}")
+                    scope.showcaseEventListener?.onEvent(TAG + "K:$currentKey enterAnim: ${message?.enterAnim}")
                     message?.let { msg ->
                         when (msg.enterAnim) {
                             is MsgAnimation.FadeInOut -> {
@@ -183,7 +184,7 @@ fun ShowcaseLayout(
 
             val textMeasurer = rememberTextMeasurer()
 
-            println(TAG + "offset :$offset")
+            scope.showcaseEventListener?.onEvent(TAG + "offset :$offset")
             Canvas(
                 modifier = Modifier
                     .fillMaxSize()
@@ -198,12 +199,12 @@ fun ShowcaseLayout(
                                     launch {
                                         animArrow.animateTo(0f, tween(duration / 2))
                                     }
-                                    // subtracting Float.MIN_VALUE here to avoid a tiny part of the path left on IOS
+                                    // subtracting Float.MIN_VALUE here to avoid a tiny part of the path left on IOS and Desktop
                                     pathPortion.animateTo(0f - Float.MIN_VALUE, tween(duration / 2))
                                 }
                                 message?.let { msg ->
-                                    println(TAG + "K:$currentKey exitAnim: ${msg.exitAnim}")
-                                    println(TAG + "K:$currentKey msg: $message")
+                                    scope.showcaseEventListener?.onEvent(TAG + "K:$currentKey exitAnim: ${msg.exitAnim}")
+                                    scope.showcaseEventListener?.onEvent(TAG + "K:$currentKey msg: $message")
                                     when (msg.exitAnim) {
                                         is MsgAnimation.FadeInOut -> {
                                             val duration = msg.enterAnim.duration
@@ -219,19 +220,19 @@ fun ShowcaseLayout(
                                 }
 
                                 if (currentKey + 1 < scope.getHashMapSize()) {
-                                    println(TAG + "current key +")
+                                    scope.showcaseEventListener?.onEvent(TAG + "current key +")
                                     /** move to next item */
                                     currentKey++
                                 } else {
                                     /** showcase finished */
-                                    println(TAG + "finished")
+                                    scope.showcaseEventListener?.onEvent(TAG + "finished")
                                     onFinish()
                                     delay(animationDuration.toLong())
                                     currentKey = initKey
                                 }
                                 isArrowDelayOver = false
                             }
-                            println(TAG + "tapped here $it")
+                            scope.showcaseEventListener?.onEvent(TAG + "tapped here $it")
                         }
                     },
                 onDraw = {
@@ -351,7 +352,7 @@ fun ShowcaseLayout(
                                 tan[0] = x
                                 tan[1] = y
                             }
-                            println(TAG + "pos:${pos} tan:${tan}")
+                            scope.showcaseEventListener?.onEvent(TAG + "pos:${pos} tan:${tan}")
                         }
                         drawPath(
                             path = outPath,
@@ -364,7 +365,7 @@ fun ShowcaseLayout(
                             val x = pos[0]
                             val y = pos[1]
                             val degrees = -atan2(tan[0], tan[1]) * (180f / PI.toFloat()) - 180f
-                            println(TAG + "max canvas: x:${size.width} y:${size.height}")
+                            scope.showcaseEventListener?.onEvent(TAG + "max canvas: x:${size.width} y:${size.height}")
                             rotate(degrees = degrees, pivot = Offset(x, y)) {
                                 drawPath(
                                     path = Path().apply {
@@ -411,10 +412,10 @@ fun ShowcaseLayout(
                                         val topPosition =
                                             currentItemYPosition - 230
                                         if (topPosition < 0) {
-                                            println(TAG + "Not enough space on top show msg on bottom")
+                                            scope.showcaseEventListener?.onEvent(TAG + "Not enough space on top show msg on bottom")
                                             currentItemYPosition + currentItemHeight + 230
                                         } else {
-                                            println(TAG + "message can be shown on top")
+                                            scope.showcaseEventListener?.onEvent(TAG + "message can be shown on top")
                                             topPosition
                                         }
                                     }
@@ -438,7 +439,7 @@ fun ShowcaseLayout(
                                 currentItemXPosition + (currentItemWidth / 2)
                             when {
                                 (currentItemXMiddlePoint < halfWidth) -> {
-                                    println(TAG + "layout on start half")
+                                    scope.showcaseEventListener?.onEvent(TAG + "layout on start half")
                                     if ((currentItemXMiddlePoint - messageWidthHalf) < 0) {
                                         currentItemXPosition
                                     } else {
@@ -447,12 +448,12 @@ fun ShowcaseLayout(
                                 }
 
                                 (currentItemXMiddlePoint == halfWidth) -> {
-                                    println(TAG + "layout in middle")
+                                    scope.showcaseEventListener?.onEvent(TAG + "layout in middle")
                                     currentItemXMiddlePoint - messageWidthHalf
                                 }
 
                                 else -> {
-                                    println(TAG + "layout on end half")
+                                    scope.showcaseEventListener?.onEvent(TAG + "layout on end half")
                                     if (currentItemXMiddlePoint + messageWidthHalf > size.width) {
                                         currentItemXPosition + currentItemWidth - textResult.size.width
                                     } else {
@@ -489,13 +490,14 @@ fun ShowcaseLayout(
                 }
             )
 
-            println(TAG + "calc: ${offset.y + itemSize.height - (maxHeight.value / 2)}")
+            scope.showcaseEventListener?.onEvent(TAG + "calc: ${offset.y + itemSize.height - (maxHeight.value / 2)}")
         }
     }
 }
 class ShowcaseScopeImpl(greeting: ShowcaseMsg?) : ShowcaseScope {
     private val showcaseDataHashMap = HashMap<Int, ShowcaseData>()
-
+    override var showcaseEventListener: ShowcaseEventListener? = null
+    
     @Composable
     override fun Showcase(
         k: Int,
@@ -503,23 +505,27 @@ class ShowcaseScopeImpl(greeting: ShowcaseMsg?) : ShowcaseScope {
         itemContent: @Composable () -> Unit
     ) {
         Box(modifier = Modifier.onGloballyPositioned {
-            println(TAG + "key: $k")
-            println(TAG + "size: ${it.size} position: ${it.positionInRoot()}")
+            showcaseEventListener?.onEvent(TAG + "key: $k")
+            showcaseEventListener?.onEvent(TAG + "size: ${it.size} position: ${it.positionInRoot()}")
             showcaseDataHashMap[k] = ShowcaseData(it.size, it.positionInRoot(), message)
-            println(TAG + "showcase map: $showcaseDataHashMap")
+            showcaseEventListener?.onEvent(TAG + "showcase map: $showcaseDataHashMap")
         }) {
 
             itemContent()
         }
     }
-    
+
     override fun Modifier.showcase(k: Int, message: ShowcaseMsg?): Modifier = composed {
         onGloballyPositioned {
-            println(TAG + "key: $k")
-            println(TAG + "size: ${it.size} position: ${it.positionInRoot()}")
+            showcaseEventListener?.onEvent(TAG + "key: $k")
+            showcaseEventListener?.onEvent(TAG + "size: ${it.size} position: ${it.positionInRoot()}")
             showcaseDataHashMap[k] = ShowcaseData(it.size, it.positionInRoot(), message)
-            println(TAG + "showcase map: $showcaseDataHashMap")
+            showcaseEventListener?.onEvent(TAG + "showcase map: $showcaseDataHashMap")
         }
+    }
+
+    override fun registerEventListener(eventListener: ShowcaseEventListener) {
+        this.showcaseEventListener = eventListener
     }
 
     init {
@@ -527,9 +533,9 @@ class ShowcaseScopeImpl(greeting: ShowcaseMsg?) : ShowcaseScope {
     }
 
     fun getSizeFor(k: Int): Size {
-        val s = showcaseDataHashMap[k]?.size?.toSize() ?: Size(0f, 0f)
-        println(TAG + "showcase map size: $s")
-        return s
+        val size = showcaseDataHashMap[k]?.size?.toSize() ?: Size(0f, 0f)
+        showcaseEventListener?.onEvent(TAG + "showcase map size: $size")
+        return size
     }
 
     fun getPositionFor(k: Int): Offset {
