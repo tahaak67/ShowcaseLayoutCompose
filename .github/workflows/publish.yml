@@ -16,7 +16,7 @@ jobs:
 
     name: Release build and publish
 
-    runs-on: ubuntu-latest
+    runs-on: macos-latest
 
     steps:
 
@@ -35,25 +35,12 @@ jobs:
           java-version: 17
 
 
-        # Builds the release artifacts of the library
-
-      - name: Release build
-
-        run: ./gradlew :showcase-layout-compose:assembleRelease
-
-
-        # Generates other artifacts
-
-      - name: Source jar and dokka
-
-        run: ./gradlew androidSourcesJar
-
-
         # Runs upload, and then closes & releases the repository
 
       - name: Publish to MavenCentral
 
-        run: ./gradlew publishReleasePublicationToSonatypeRepository --max-workers 1 closeAndReleaseSonatypeStagingRepository
+        run: ./gradlew publishToSonatype --max-workers 1 closeAndReleaseSonatypeStagingRepository
+
 
         env:
 
