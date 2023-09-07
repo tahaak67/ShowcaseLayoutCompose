@@ -1,10 +1,17 @@
+![Maven Central](https://img.shields.io/maven-central/v/ly.com.tahaben/showcase-layout-compose)
 [![GitHub issues](https://img.shields.io/github/issues/tahaak67/ShowcaseLayoutCompose)](https://github.com/tahaak67/ShowcaseLayoutCompose/issues)
 [![GitHub stars](https://img.shields.io/github/stars/tahaak67/ShowcaseLayoutCompose)](https://github.com/tahaak67/ShowcaseLayoutCompose/stargazers)
 [![GitHub license](https://img.shields.io/github/license/tahaak67/ShowcaseLayoutCompose)](https://github.com/tahaak67/ShowcaseLayoutCompose/blob/main/LICENSE)
+[![Compose Multiplatform](https://img.shields.io/badge/Compose%20Multiplatform-v1.5.0-blue)](https://github.com/JetBrains/compose-multiplatform)
+![badge-android](http://img.shields.io/badge/platform-android-3DDC84.svg)
+![badge-ios](http://img.shields.io/badge/platform-ios-CDCDCD.svg)
+![badge-desktop](http://img.shields.io/badge/platform-desktop-DB413D.svg)
 
 # Showcase Layout Compose
 
-Create a beautiful animated showcase effect for you android app easily !
+Create a beautiful animated showcase effect for your compose UIs easily !
+
+**Now with multiplatform support :D**
 
 ## Demo
 
@@ -12,12 +19,15 @@ Create a beautiful animated showcase effect for you android app easily !
 
 ## Usage
 
-Showcase Layout Compose is available on `mavencentral()`.
+Showcase Layout Compose can be used in **both** Jetpack Compose (native Android) or Compose Multiplatform (Kotlin Multiplatform) projects.
+
+
+> Compose multiplatform support starts at version `1.0.5-alpha-8` and up.
 
 Add the dependency to your module's `build.gradle` file like below
 
-```
-implementation("ly.com.tahaben:showcase-layout-compose:1.0.3")
+``` kotlin
+implementation("ly.com.tahaben:showcase-layout-compose:1.0.5-beta")
 ```
 
 #### Step 1
@@ -204,6 +214,16 @@ arrow = Arrow(
 | :---------------: | :---------------: | :---------------: |
 |<img src="metadata/screenshots/screenshot-1.png" align="center" alt="Screenshot"  width="250" /> | <img src="metadata/screenshots/screenshot-2.png" align="center" alt="Screenshot"  width="250" />| <img src="metadata/screenshots/screenshot-3.png" align="center" alt="Screenshot"  width="250" />|
 
+## Logging Events
+In recent releases logs have been disabled by default, to print log statement of the current actions taken by compose layout register a listener in your ShowcaseLayout
+```kotlin
+        registerEventListener(object: ShowcaseEventListener {
+            override fun onEvent(event: String) {
+                println(event)
+            }
+        })
+```
+
 ## Complete Example
 
 For a complete example check
@@ -220,4 +240,4 @@ Showcase Layout is used by:
 
 - [Farhan](https://github.com/tahaak67/Farhan)
 
-Contact me if you used ShowcaseLayout in your app and you want it added to this list
+Contact me if you used ShowcaseLayout in your app, and you want it added to this list
