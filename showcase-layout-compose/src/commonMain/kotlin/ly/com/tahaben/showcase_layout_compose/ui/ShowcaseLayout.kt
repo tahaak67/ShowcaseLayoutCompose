@@ -162,7 +162,10 @@ fun ShowcaseLayout(
                     }
                 }
                 if (currentKey == 0) {
-                    animMsgTextAlpha.snapTo(1f)
+                    message?.let { msg ->
+                        animMsgAlpha.animateTo(1f, tween(msg.enterAnim.duration))
+                        animMsgTextAlpha.animateTo(1f, tween(msg.enterAnim.duration))
+                    }
                 } else {
                     scope.showcaseEventListener?.onEvent(TAG + "K:$currentKey enterAnim: ${message?.enterAnim}")
                     message?.let { msg ->
@@ -494,10 +497,11 @@ fun ShowcaseLayout(
         }
     }
 }
+
 class ShowcaseScopeImpl(greeting: ShowcaseMsg?) : ShowcaseScope {
     private val showcaseDataHashMap = HashMap<Int, ShowcaseData>()
     override var showcaseEventListener: ShowcaseEventListener? = null
-    
+
     @Composable
     override fun Showcase(
         k: Int,

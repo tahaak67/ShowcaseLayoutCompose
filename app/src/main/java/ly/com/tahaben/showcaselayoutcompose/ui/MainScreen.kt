@@ -88,7 +88,9 @@ fun MainScreen(
         isDarkLayout = isSystemInDarkTheme(),
         greeting = ShowcaseMsg(
             text = greetingString,
-            textStyle = TextStyle(color = Color.White, textAlign = TextAlign.Center)
+            textStyle = TextStyle(color = Color.Black, textAlign = TextAlign.Center),
+            msgBackground = Color.White,
+            roundedCorner = 15.dp
         )
     ) {
         registerEventListener(object: ShowcaseEventListener {
