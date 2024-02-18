@@ -21,7 +21,6 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.composed
 import androidx.compose.ui.geometry.CornerRadius
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Size
@@ -45,7 +44,11 @@ import androidx.compose.ui.unit.IntSize
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.toSize
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.launch
+import ly.com.tahaben.showcase_layout_compose.domain.Level
 import ly.com.tahaben.showcase_layout_compose.domain.ShowcaseEventListener
 import ly.com.tahaben.showcase_layout_compose.model.Gravity
 import ly.com.tahaben.showcase_layout_compose.model.MsgAnimation
@@ -72,48 +75,64 @@ import kotlin.math.atan2
  * Created by Taha Ben Ashur (https://github.com/tahaak67) on 1,August,2022
  */
 
-private const val TAG = "ShowcaseLayout"
+private const val TAG = "ShowcaseLayout "
 
 /**
  * ShowcaseLayout
  *
  * @param isShowcasing to determine if showcase is starting or not.
  * @param isDarkLayout if true the showcase view will be white instead of black.
- * @param initKey the initial value of counter, set this to 1 if you don't want a greeting screen before showcasing target.
+ * @param initIndex the initial value of counter, set this to 1 if you don't want a greeting screen before showcasing target.
  * @param animationDuration total animation time taken when switching from current to next target in milliseconds.
  * @param onFinish what happens when all items are showcased.
- * @param greeting greeting message to be shown before showcasing the first composable, leave initKey at 0 if you want to use this.
+ * @param greeting greeting message to be shown before showcasing the first composable, leave [initIndex] at 0 if you want to use this.
  **/
 
 @Composable
 fun ShowcaseLayout(
     isShowcasing: Boolean,
     isDarkLayout: Boolean = false,
-    initKey: Int = 0,
+    initIndex: Int = 0,
     animationDuration: Int = 1000,
     onFinish: () -> Unit,
     greeting: ShowcaseMsg? = null,
     content: @Composable ShowcaseScope.() -> Unit
 ) {
-    var currentKey by remember {
-        mutableIntStateOf(initKey)
+    var currentIndex by remember {
+        mutableIntStateOf(initIndex)
     }
     val scope = ShowcaseScopeImpl(greeting)
     scope.content()
+
+    var showCasingItem by remember { mutableStateOf(false) }
+    LaunchedEffect(key1 = isShowcasing) {
+        scope.showcaseActionFlow.collectLatest{
+            if (it != null) {
+                scope.showcaseEventListener?.onEvent(Level.DEBUG,TAG + "showcase single item index: $it")
+                currentIndex = it ?: initIndex
+                showCasingItem = true
+            } else {
+                showCasingItem = false
+                delay(animationDuration.toLong())
+                currentIndex = initIndex
+            }
+        }
+    }
+
     BoxWithConstraints(modifier = Modifier.fillMaxSize()) {
-        AnimatedVisibility(isShowcasing, enter = fadeIn(), exit = fadeOut()) {
+        AnimatedVisibility(isShowcasing || showCasingItem, enter = fadeIn(), exit = fadeOut()) {
             val offset by animateOffsetAsState(
-                targetValue = scope.getPositionFor(currentKey),
+                targetValue = scope.getPositionFor(currentIndex),
                 animationSpec = tween(animationDuration),
                 label = "item offset anim"
             )
             val itemSize by animateSizeAsState(
-                targetValue = scope.getSizeFor(currentKey),
+                targetValue = scope.getSizeFor(currentIndex),
                 animationSpec = tween(animationDuration),
                 label = "item size anim"
             )
             var message by remember {
-                mutableStateOf(scope.getMessageFor(currentKey))
+                mutableStateOf(scope.getMessageFor(currentIndex))
             }
             val pathPortion = remember {
                 Animatable(initialValue = 0f)
@@ -130,8 +149,8 @@ fun ShowcaseLayout(
             val animArrow = remember { Animatable(0f) }
 
             /** to animate current arrow line */
-            LaunchedEffect(key1 = currentKey) {
-                message = scope.getMessageFor(currentKey)
+            LaunchedEffect(key1 = currentIndex) {
+                message = scope.getMessageFor(currentIndex)
                 arrowAnimDuration = message?.arrow?.animationDuration
                 isArrowDelayOver = false
                 if (message?.arrow != null) {
@@ -161,13 +180,13 @@ fun ShowcaseLayout(
                         }
                     }
                 }
-                if (currentKey == 0) {
+                if (currentIndex == 0) {
                     message?.let { msg ->
                         animMsgAlpha.animateTo(1f, tween(msg.enterAnim.duration))
                         animMsgTextAlpha.animateTo(1f, tween(msg.enterAnim.duration))
                     }
                 } else {
-                    scope.showcaseEventListener?.onEvent(TAG + "K:$currentKey enterAnim: ${message?.enterAnim}")
+                    scope.showcaseEventListener?.onEvent(Level.VERBOSE,TAG + "index:$currentIndex enterAnim: ${message?.enterAnim}")
                     message?.let { msg ->
                         when (msg.enterAnim) {
                             is MsgAnimation.FadeInOut -> {
@@ -187,8 +206,7 @@ fun ShowcaseLayout(
             }
 
             val textMeasurer = rememberTextMeasurer()
-
-            scope.showcaseEventListener?.onEvent(TAG + "offset :$offset")
+            scope.showcaseEventListener?.onEvent(Level.VERBOSE,TAG + "index: $currentIndex offset :$offset")
             Canvas(
                 modifier = Modifier
                     .fillMaxSize()
@@ -207,8 +225,8 @@ fun ShowcaseLayout(
                                     pathPortion.animateTo(0f - Float.MIN_VALUE, tween(duration / 2))
                                 }
                                 message?.let { msg ->
-                                    scope.showcaseEventListener?.onEvent(TAG + "K:$currentKey exitAnim: ${msg.exitAnim}")
-                                    scope.showcaseEventListener?.onEvent(TAG + "K:$currentKey msg: $message")
+                                    scope.showcaseEventListener?.onEvent(Level.VERBOSE,TAG + "index:$currentIndex exitAnim: ${msg.exitAnim}")
+                                    scope.showcaseEventListener?.onEvent(Level.VERBOSE,TAG + "index:$currentIndex msg: ${message?.text}")
                                     when (msg.exitAnim) {
                                         is MsgAnimation.FadeInOut -> {
                                             val duration = msg.enterAnim.duration
@@ -222,21 +240,24 @@ fun ShowcaseLayout(
                                         }
                                     }
                                 }
-
-                                if (currentKey + 1 < scope.getHashMapSize()) {
-                                    scope.showcaseEventListener?.onEvent(TAG + "current key +")
+                                if (showCasingItem) {
+                                    scope.showcaseItemFinished()
+                                    return@launch
+                                }
+                                if (currentIndex + 1 < scope.getHashMapSize()) {
+                                    scope.showcaseEventListener?.onEvent(Level.INFO,TAG + "moving to index ${currentIndex + 1}")
                                     /** move to next item */
-                                    currentKey++
+                                    currentIndex++
                                 } else {
                                     /** showcase finished */
-                                    scope.showcaseEventListener?.onEvent(TAG + "finished")
+                                    scope.showcaseEventListener?.onEvent(Level.INFO,TAG + "finished")
                                     onFinish()
                                     delay(animationDuration.toLong())
-                                    currentKey = initKey
+                                    currentIndex = initIndex
                                 }
                                 isArrowDelayOver = false
                             }
-                            scope.showcaseEventListener?.onEvent(TAG + "tapped here $it")
+                            scope.showcaseEventListener?.onEvent(Level.VERBOSE,TAG + "tapped here $it")
                         }
                     },
                 onDraw = {
@@ -271,7 +292,7 @@ fun ShowcaseLayout(
                     )
                     val hasArrowHead = message?.arrow?.hasHead == true
 
-                    if (currentKey > 0 && shouldDrawArrow) {
+                    if (currentIndex > 0 && shouldDrawArrow) {
                         /** draw arrow line */
                         val arrowPath = Path().apply {
                             if (message?.arrow?.curved == true) {
@@ -355,7 +376,7 @@ fun ShowcaseLayout(
                                 tan[0] = x
                                 tan[1] = y
                             }
-                            scope.showcaseEventListener?.onEvent(TAG + "pos:${pos} tan:${tan}")
+                            scope.showcaseEventListener?.onEvent(Level.VERBOSE,TAG + "pos:${pos} tan:${tan}")
                         }
                         drawPath(
                             path = outPath,
@@ -368,7 +389,7 @@ fun ShowcaseLayout(
                             val x = pos[0]
                             val y = pos[1]
                             val degrees = -atan2(tan[0], tan[1]) * (180f / PI.toFloat()) - 180f
-                            scope.showcaseEventListener?.onEvent(TAG + "max canvas: x:${size.width} y:${size.height}")
+                            scope.showcaseEventListener?.onEvent(Level.VERBOSE,TAG + "max canvas: x:${size.width} y:${size.height}")
                             rotate(degrees = degrees, pivot = Offset(x, y)) {
                                 drawPath(
                                     path = Path().apply {
@@ -399,9 +420,9 @@ fun ShowcaseLayout(
 
                         /** Determine if message will be shown on top or below target */
                         val yOffset =
-                            if (currentKey == 0) (size.height / 2) else with(density) {
-                                val currentItemYPosition = scope.getPositionFor(currentKey).y
-                                val currentItemHeight = scope.getSizeFor(currentKey).height
+                            if (currentIndex == 0) (size.height / 2) else with(density) {
+                                val currentItemYPosition = scope.getPositionFor(currentIndex).y
+                                val currentItemHeight = scope.getSizeFor(currentIndex).height
                                 when (msg.gravity) {
                                     Gravity.Top -> {
                                         currentItemYPosition + 230
@@ -415,10 +436,10 @@ fun ShowcaseLayout(
                                         val topPosition =
                                             currentItemYPosition - 230
                                         if (topPosition < 0) {
-                                            scope.showcaseEventListener?.onEvent(TAG + "Not enough space on top show msg on bottom")
+                                            scope.showcaseEventListener?.onEvent(Level.INFO,TAG + "index: $currentIndex Not enough space on top show msg on bottom")
                                             currentItemYPosition + currentItemHeight + 230
                                         } else {
-                                            scope.showcaseEventListener?.onEvent(TAG + "message can be shown on top")
+                                            scope.showcaseEventListener?.onEvent(Level.INFO,TAG + "index: $currentIndex message can be shown on top")
                                             topPosition
                                         }
                                     }
@@ -433,16 +454,16 @@ fun ShowcaseLayout(
                         will get cut off, if that's the case we align the message Start or End to
                         the target Start or End as appropriate
                          */
-                        val xOffset = if (currentKey == 0) {
+                        val xOffset = if (currentIndex == 0) {
                             halfWidth - messageWidthHalf
                         } else {
-                            val currentItemXPosition = scope.getPositionFor(currentKey).x
-                            val currentItemWidth = scope.getSizeFor(currentKey).width
+                            val currentItemXPosition = scope.getPositionFor(currentIndex).x
+                            val currentItemWidth = scope.getSizeFor(currentIndex).width
                             val currentItemXMiddlePoint =
                                 currentItemXPosition + (currentItemWidth / 2)
                             when {
                                 (currentItemXMiddlePoint < halfWidth) -> {
-                                    scope.showcaseEventListener?.onEvent(TAG + "layout on start half")
+                                    scope.showcaseEventListener?.onEvent(Level.INFO,TAG + "index: $currentIndex layout on start half")
                                     if ((currentItemXMiddlePoint - messageWidthHalf) < 0) {
                                         currentItemXPosition
                                     } else {
@@ -451,12 +472,12 @@ fun ShowcaseLayout(
                                 }
 
                                 (currentItemXMiddlePoint == halfWidth) -> {
-                                    scope.showcaseEventListener?.onEvent(TAG + "layout in middle")
+                                    scope.showcaseEventListener?.onEvent(Level.INFO,TAG + "index: $currentIndex layout in middle")
                                     currentItemXMiddlePoint - messageWidthHalf
                                 }
 
                                 else -> {
-                                    scope.showcaseEventListener?.onEvent(TAG + "layout on end half")
+                                    scope.showcaseEventListener?.onEvent(Level.INFO,TAG + "index: $currentIndex layout on end half")
                                     if (currentItemXMiddlePoint + messageWidthHalf > size.width) {
                                         currentItemXPosition + currentItemWidth - textResult.size.width
                                     } else {
@@ -492,8 +513,7 @@ fun ShowcaseLayout(
                     }
                 }
             )
-
-            scope.showcaseEventListener?.onEvent(TAG + "calc: ${offset.y + itemSize.height - (maxHeight.value / 2)}")
+            scope.showcaseEventListener?.onEvent(Level.VERBOSE,TAG + "calc: ${offset.y + itemSize.height - (maxHeight.value / 2)}")
         }
     }
 }
@@ -501,52 +521,72 @@ fun ShowcaseLayout(
 class ShowcaseScopeImpl(greeting: ShowcaseMsg?) : ShowcaseScope {
     private val showcaseDataHashMap = HashMap<Int, ShowcaseData>()
     override var showcaseEventListener: ShowcaseEventListener? = null
+    private val _showcaseActionFlow = MutableStateFlow<Int?>(null)
+    val showcaseActionFlow = _showcaseActionFlow.asStateFlow()
 
     @Composable
     override fun Showcase(
-        k: Int,
+        index: Int,
         message: ShowcaseMsg?,
         itemContent: @Composable () -> Unit
     ) {
+        require(index >= 1) { "Index must be 1 or greater" }
         Box(modifier = Modifier.onGloballyPositioned {
-            showcaseEventListener?.onEvent(TAG + "key: $k")
-            showcaseEventListener?.onEvent(TAG + "size: ${it.size} position: ${it.positionInRoot()}")
-            showcaseDataHashMap[k] = ShowcaseData(it.size, it.positionInRoot(), message)
-            showcaseEventListener?.onEvent(TAG + "showcase map: $showcaseDataHashMap")
+            showcaseDataHashMap[index] = ShowcaseData(it.size, it.positionInRoot(), message)
+
+                showcaseEventListener?.onEvent(Level.VERBOSE,TAG + "Index: $index")
+                showcaseEventListener?.onEvent(Level.VERBOSE,TAG + "size: ${it.size} position: ${it.positionInRoot()}")
+                showcaseEventListener?.onEvent(Level.VERBOSE,TAG + "showcase map: $showcaseDataHashMap")
+
         }) {
 
             itemContent()
         }
     }
 
-    override fun Modifier.showcase(k: Int, message: ShowcaseMsg?): Modifier = composed {
-        onGloballyPositioned {
-            showcaseEventListener?.onEvent(TAG + "key: $k")
-            showcaseEventListener?.onEvent(TAG + "size: ${it.size} position: ${it.positionInRoot()}")
-            showcaseDataHashMap[k] = ShowcaseData(it.size, it.positionInRoot(), message)
-            showcaseEventListener?.onEvent(TAG + "showcase map: $showcaseDataHashMap")
-        }
+    override fun Modifier.showcase(index: Int, message: ShowcaseMsg?): Modifier {
+        require(index >= 1) { "Index must be 1 or greater" }
+        return this.then(
+            onGloballyPositioned {
+                if(it.isAttached) {
+                    showcaseDataHashMap[index] = ShowcaseData(it.size, it.positionInRoot(), message)
+                    showcaseEventListener?.onEvent(Level.VERBOSE,TAG + "Index: $index")
+                    showcaseEventListener?.onEvent(Level.VERBOSE,TAG + "size: ${it.size} position: ${it.positionInRoot()}")
+                    showcaseEventListener?.onEvent(Level.VERBOSE,TAG + "showcase map: $showcaseDataHashMap")
+                }
+            }
+        )
     }
 
     override fun registerEventListener(eventListener: ShowcaseEventListener) {
         this.showcaseEventListener = eventListener
     }
 
+    override suspend fun showcaseItem(index: Int) {
+        showcaseEventListener?.onEvent(Level.DEBUG, TAG + "showcase item $index")
+        _showcaseActionFlow.emit(index)
+    }
+
+    override suspend fun showcaseItemFinished() {
+        showcaseEventListener?.onEvent(Level.DEBUG,TAG + "showcase item finished")
+        _showcaseActionFlow.emit(null)
+    }
+
     init {
         showcaseDataHashMap[0] = ShowcaseData(IntSize(0, 0), Offset(0f, 0f), greeting)
     }
 
-    fun getSizeFor(k: Int): Size {
-        val size = showcaseDataHashMap[k]?.size?.toSize() ?: Size(0f, 0f)
-        showcaseEventListener?.onEvent(TAG + "showcase map size: $size")
+    fun getSizeFor(index: Int): Size {
+        val size = showcaseDataHashMap[index]?.size?.toSize() ?: Size(0f, 0f)
+        showcaseEventListener?.onEvent(Level.VERBOSE,TAG + "showcase map size: $size")
         return size
     }
 
-    fun getPositionFor(k: Int): Offset {
-        if (k == 0) {
+    fun getPositionFor(index: Int): Offset {
+        if (index == 0) {
             return showcaseDataHashMap[1]?.position ?: Offset(0f, 0f)
         }
-        val p = showcaseDataHashMap[k]?.position ?: Offset(0f, 0f)
+        val p = showcaseDataHashMap[index]?.position ?: Offset(0f, 0f)
         return p
     }
 
@@ -554,7 +594,8 @@ class ShowcaseScopeImpl(greeting: ShowcaseMsg?) : ShowcaseScope {
         return showcaseDataHashMap.size
     }
 
-    fun getMessageFor(currentKey: Int): ShowcaseMsg? {
-        return showcaseDataHashMap[currentKey]?.message
+    fun getMessageFor(currentIndex: Int): ShowcaseMsg? {
+        return showcaseDataHashMap[currentIndex]?.message
     }
+
 }
