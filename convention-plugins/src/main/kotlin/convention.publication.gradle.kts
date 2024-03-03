@@ -14,7 +14,7 @@ ext["ossrhUsername"] = null
 ext["ossrhPassword"] = null
 
 val publishGroupId: String = "ly.com.tahaben"
-val publishVersion: String = "1.0.5-beta"
+val publishVersion: String = "1.0.5-beta-local"
 val publishArtifactId: String = "showcase-layout-compose"
 
 

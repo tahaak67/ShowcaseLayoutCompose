@@ -53,5 +53,6 @@ interface ShowcaseScope {
 
     suspend fun showcaseItem(index: Int)
     suspend fun showcaseItemFinished()
-
+    suspend fun showGreeting(message: ShowcaseMsg)
+    suspend fun showGreetingFinished()
 }
