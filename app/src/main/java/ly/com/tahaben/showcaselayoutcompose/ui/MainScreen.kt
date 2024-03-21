@@ -261,7 +261,7 @@ fun MainScreen(
                             ),
                             msgBackground = MaterialTheme.colors.primary,
                             gravity = Gravity.Top,
-                            arrow = Arrow(color = MaterialTheme.colors.primary, targetFrom = Side.Top),
+                            arrow = Arrow(color = MaterialTheme.colors.primary, targetFrom = Side.Top, headSize = 30f),
                             enterAnim = MsgAnimation.FadeInOut(),
                             exitAnim = MsgAnimation.FadeInOut()
                         )).showcase(index =6, message =
@@ -273,7 +273,7 @@ fun MainScreen(
                             ),
                             msgBackground = MaterialTheme.colors.primary,
                             gravity = Gravity.Top,
-                            arrow = Arrow(color = MaterialTheme.colors.primary, targetFrom = Side.Right),
+                            arrow = Arrow(color = MaterialTheme.colors.primary, targetFrom = Side.Right, headSize = 35f),
                             enterAnim = MsgAnimation.FadeInOut(),
                             exitAnim = MsgAnimation.FadeInOut()
                         )),
@@ -292,7 +292,7 @@ fun MainScreen(
                             ),
                             msgBackground = MaterialTheme.colors.primary,
                             gravity = Gravity.Top,
-                            arrow = Arrow(color = MaterialTheme.colors.primary, targetFrom = Side.Left),
+                            arrow = Arrow(color = MaterialTheme.colors.primary, targetFrom = Side.Left, headSize = 45f),
                             enterAnim = MsgAnimation.FadeInOut(),
                             exitAnim = MsgAnimation.FadeInOut()
                         )),

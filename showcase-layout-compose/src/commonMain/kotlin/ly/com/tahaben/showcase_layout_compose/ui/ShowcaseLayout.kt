@@ -50,6 +50,7 @@ import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.launch
 import ly.com.tahaben.showcase_layout_compose.domain.Level
 import ly.com.tahaben.showcase_layout_compose.domain.ShowcaseEventListener
+import ly.com.tahaben.showcase_layout_compose.model.Arrow
 import ly.com.tahaben.showcase_layout_compose.model.Gravity
 import ly.com.tahaben.showcase_layout_compose.model.MsgAnimation
 import ly.com.tahaben.showcase_layout_compose.model.ShowcaseData
@@ -346,6 +347,7 @@ fun ShowcaseLayout(
                         alpha = 0.80f,
                     )
                     val hasArrowHead = message?.arrow?.hasHead == true
+                    val arrowHeadMargin = (message?.arrow?.headSize ?: Arrow().headSize) + 25
 
                     if (currentIndex > 0 && shouldDrawArrow) {
                         /** draw arrow line */
@@ -375,7 +377,7 @@ fun ShowcaseLayout(
                                         )
                                         lineTo(
                                             offset.x + (itemSize.width / 2),
-                                            if (hasArrowHead) offset.y - 50 else offset.y
+                                            if (hasArrowHead) offset.y - arrowHeadMargin else offset.y
                                         )
                                     }
 
@@ -386,7 +388,7 @@ fun ShowcaseLayout(
                                         )
                                         lineTo(
                                             offset.x + (itemSize.width / 2),
-                                            if (hasArrowHead) offset.y + itemSize.height + 50 else offset.y + itemSize.height
+                                            if (hasArrowHead) offset.y + itemSize.height + arrowHeadMargin else offset.y + itemSize.height
                                         )
                                     }
 
@@ -396,7 +398,7 @@ fun ShowcaseLayout(
                                             offset.y + (itemSize.height / 2)
                                         )
                                         lineTo(
-                                            if (hasArrowHead) offset.x - 50 else offset.x,
+                                            if (hasArrowHead) offset.x - arrowHeadMargin else offset.x,
                                             offset.y + (itemSize.height / 2)
                                         )
                                     }
@@ -407,7 +409,7 @@ fun ShowcaseLayout(
                                             offset.y + (itemSize.height / 2)
                                         )
                                         lineTo(
-                                            if (hasArrowHead) offset.x + itemSize.width + 50 else offset.x + itemSize.width,
+                                            if (hasArrowHead) offset.x + itemSize.width + arrowHeadMargin else offset.x + itemSize.width,
                                             offset.y + (itemSize.height / 2)
                                         )
                                     }
@@ -444,6 +446,7 @@ fun ShowcaseLayout(
 
                         /** draw the arrow head (and rotate if needed) */
                         if (message?.arrow?.hasHead == true) {
+                            val arrowSize = message?.arrow?.headSize ?: Arrow().headSize
                             val x = pos[0]
                             val y = pos[1]
                             val degrees = -atan2(tan[0], tan[1]) * (180f / PI.toFloat()) - 180f
@@ -454,9 +457,9 @@ fun ShowcaseLayout(
                             rotate(degrees = degrees, pivot = Offset(x, y)) {
                                 drawPath(
                                     path = Path().apply {
-                                        moveTo(x, y - 30f)
-                                        lineTo(x - 30f, y + 60f)
-                                        lineTo(x + 30f, y + 60f)
+                                        moveTo(x, y - arrowSize)
+                                        lineTo(x - arrowSize, y + arrowSize)
+                                        lineTo(x + arrowSize, y + arrowSize)
                                         close()
                                     },
                                     color = arrowColor,
