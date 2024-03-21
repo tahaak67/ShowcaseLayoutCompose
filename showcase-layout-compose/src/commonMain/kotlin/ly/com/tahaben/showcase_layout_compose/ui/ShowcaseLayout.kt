@@ -131,10 +131,12 @@ fun ShowcaseLayout(
                         Level.DEBUG,
                         TAG + "showcase single greeting: $it"
                     )
+                    currentIndex = 0
                     isSingleGreeting = true
                 } else {
                     isSingleGreeting = false
-                    currentIndex = 0
+                    delay(animationDuration.toLong() / 2)
+                    currentIndex = initIndex
                 }
                 singleGreetingMsg = it
             }
@@ -373,7 +375,7 @@ fun ShowcaseLayout(
                                         )
                                         lineTo(
                                             offset.x + (itemSize.width / 2),
-                                            if (hasArrowHead) offset.y - 60 else offset.y
+                                            if (hasArrowHead) offset.y - 50 else offset.y
                                         )
                                     }
 
@@ -384,7 +386,7 @@ fun ShowcaseLayout(
                                         )
                                         lineTo(
                                             offset.x + (itemSize.width / 2),
-                                            if (hasArrowHead) offset.y + itemSize.height + 20 else offset.y + itemSize.height
+                                            if (hasArrowHead) offset.y + itemSize.height + 50 else offset.y + itemSize.height
                                         )
                                     }
 
@@ -394,7 +396,7 @@ fun ShowcaseLayout(
                                             offset.y + (itemSize.height / 2)
                                         )
                                         lineTo(
-                                            if (hasArrowHead) offset.x - 30 else offset.x,
+                                            if (hasArrowHead) offset.x - 50 else offset.x,
                                             offset.y + (itemSize.height / 2)
                                         )
                                     }
@@ -405,7 +407,7 @@ fun ShowcaseLayout(
                                             offset.y + (itemSize.height / 2)
                                         )
                                         lineTo(
-                                            if (hasArrowHead) offset.x + itemSize.width + 30 else offset.x + itemSize.width,
+                                            if (hasArrowHead) offset.x + itemSize.width + 50 else offset.x + itemSize.width,
                                             offset.y + (itemSize.height / 2)
                                         )
                                     }
@@ -484,7 +486,7 @@ fun ShowcaseLayout(
                                 val currentItemHeight = scope.getSizeFor(currentIndex).height
                                 when (msg.gravity) {
                                     Gravity.Top -> {
-                                        currentItemYPosition + 230
+                                        currentItemYPosition - 230
                                     }
 
                                     Gravity.Bottom -> {
@@ -658,7 +660,7 @@ class ShowcaseScopeImpl(greeting: ShowcaseMsg?) : ShowcaseScope {
         _showcaseActionFlow.emit(index)
     }
 
-    override suspend fun showcaseItemFinished() {
+     suspend fun showcaseItemFinished() {
         showcaseEventListener?.onEvent(Level.DEBUG, TAG + "showcase item finished")
         _showcaseActionFlow.emit(null)
     }
@@ -671,7 +673,7 @@ class ShowcaseScopeImpl(greeting: ShowcaseMsg?) : ShowcaseScope {
         )
     }
 
-    override suspend fun showGreetingFinished() {
+     suspend fun showGreetingFinished() {
         _greetingActionFlow.emit(null)
         showcaseEventListener?.onEvent(
             Level.DEBUG,

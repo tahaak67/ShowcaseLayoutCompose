@@ -47,7 +47,7 @@ kotlin {
 }
 
 android {
-    compileSdk = 33
+    compileSdk = 34
     namespace = "ly.com.tahaben.showcaselayoutcompose"
 
     compileOptions {

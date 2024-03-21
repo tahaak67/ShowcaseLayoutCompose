@@ -252,13 +252,50 @@ fun MainScreen(
                                 enterAnim = MsgAnimation.FadeInOut(),
                                 exitAnim = MsgAnimation.FadeInOut()
                             )
-                        ),
+                        ).showcase(index = 5, message =
+                        ShowcaseMsg(
+                            "From top !",
+                            textStyle = TextStyle(
+                                color = Color(0xFF827717),
+                                fontSize = 18.sp
+                            ),
+                            msgBackground = MaterialTheme.colors.primary,
+                            gravity = Gravity.Top,
+                            arrow = Arrow(color = MaterialTheme.colors.primary, targetFrom = Side.Top),
+                            enterAnim = MsgAnimation.FadeInOut(),
+                            exitAnim = MsgAnimation.FadeInOut()
+                        )).showcase(index =6, message =
+                        ShowcaseMsg(
+                            "Right",
+                            textStyle = TextStyle(
+                                color = Color(0xFF827717),
+                                fontSize = 18.sp
+                            ),
+                            msgBackground = MaterialTheme.colors.primary,
+                            gravity = Gravity.Top,
+                            arrow = Arrow(color = MaterialTheme.colors.primary, targetFrom = Side.Right),
+                            enterAnim = MsgAnimation.FadeInOut(),
+                            exitAnim = MsgAnimation.FadeInOut()
+                        )),
                         text = stringResource(R.string.usage),
                         iconId = R.drawable.ic_usage,
                         status = ""
                     ) { coroutineScope.launch { showcaseItem(1) } }
 
                     MainScreenCard(
+                        modifier = Modifier.showcase(index = 7, message =
+                        ShowcaseMsg(
+                            "Left",
+                            textStyle = TextStyle(
+                                color = Color(0xFF827717),
+                                fontSize = 18.sp
+                            ),
+                            msgBackground = MaterialTheme.colors.primary,
+                            gravity = Gravity.Top,
+                            arrow = Arrow(color = MaterialTheme.colors.primary, targetFrom = Side.Left),
+                            enterAnim = MsgAnimation.FadeInOut(),
+                            exitAnim = MsgAnimation.FadeInOut()
+                        )),
                         text = stringResource(R.string.notifications_filter),
                         iconId = R.drawable.ic_notification,
                         status = if (isNotificationFilterEnabled) stringResource(id = R.string.enabled) else stringResource(
