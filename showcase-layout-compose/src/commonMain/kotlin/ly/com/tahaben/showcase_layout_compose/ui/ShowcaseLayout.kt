@@ -135,7 +135,6 @@ fun ShowcaseLayout(
                     isSingleGreeting = true
                 } else {
                     isSingleGreeting = false
-                    delay(animationDuration.toLong() / 2)
                     currentIndex = initIndex
                 }
                 singleGreetingMsg = it
@@ -289,6 +288,7 @@ fun ShowcaseLayout(
                                 }
                                 if (isSingleGreeting) {
                                     scope.showGreetingFinished()
+                                    return@launch
                                 }
                                 if (currentIndex + 1 < scope.getHashMapSize()) {
                                     scope.showcaseEventListener?.onEvent(
