@@ -38,7 +38,7 @@ android {
         buildConfig true
     }
     composeOptions {
-        kotlinCompilerExtensionVersion '1.5.8'
+        kotlinCompilerExtensionVersion '1.5.11'
     }
     packagingOptions {
         resources {
@@ -48,7 +48,7 @@ android {
 }
 
 dependencies {
-    def composeBom = platform('androidx.compose:compose-bom:2024.02.00')
+    def composeBom = platform('androidx.compose:compose-bom:2024.02.02')
     implementation composeBom
     androidTestImplementation composeBom
     implementation 'androidx.core:core-ktx:1.12.0'

@@ -185,6 +185,16 @@ fun MainScreen(
             ) {
                 Spacer(modifier = Modifier.height(spacing.spaceExtraLarge))
                 Text(
+                    modifier = Modifier.clickable {
+                        coroutineScope.launch {
+                            showGreeting(
+                                ShowcaseMsg(
+                                    text = "I love banana bro <3",
+                                    textStyle = TextStyle(color = Color.White)
+                                )
+                            )
+                        }
+                    },
                     text = stringResource(id = R.string.hello),
                     style = MaterialTheme.typography.h1,
                     color = MaterialTheme.colors.onPrimary
@@ -201,18 +211,20 @@ fun MainScreen(
                     Spacer(modifier = Modifier.width(spacing.spaceExtraSmall))
 
                     Text(
-                        modifier = Modifier.showcase(
-                            index = 4, message = ShowcaseMsg(
-                                "Useful tip tho :P",
-                                textStyle = TextStyle(color = Color.DarkGray),
-                                msgBackground = Color(0xFFE0F2F1),
-                                arrow = Arrow(
-                                    targetFrom = Side.Top,
-                                    hasHead = false,
-                                    color = MaterialTheme.colors.primary
+                        modifier = Modifier
+                            .showcase(
+                                index = 4, message = ShowcaseMsg(
+                                    "Useful tip tho :P",
+                                    textStyle = TextStyle(color = Color.DarkGray),
+                                    msgBackground = Color(0xFFE0F2F1),
+                                    arrow = Arrow(
+                                        targetFrom = Side.Top,
+                                        hasHead = false,
+                                        color = MaterialTheme.colors.primary
+                                    )
                                 )
                             )
-                        ).clickable { coroutineScope.launch { showcaseItem(4) } },
+                            .clickable { coroutineScope.launch { showcaseItem(4) } },
                         text = tip,
                         style = MaterialTheme.typography.h5,
                         color = MaterialTheme.colors.onPrimary
@@ -240,13 +252,50 @@ fun MainScreen(
                                 enterAnim = MsgAnimation.FadeInOut(),
                                 exitAnim = MsgAnimation.FadeInOut()
                             )
-                        ),
+                        ).showcase(index = 5, message =
+                        ShowcaseMsg(
+                            "From top !",
+                            textStyle = TextStyle(
+                                color = Color(0xFF827717),
+                                fontSize = 18.sp
+                            ),
+                            msgBackground = MaterialTheme.colors.primary,
+                            gravity = Gravity.Top,
+                            arrow = Arrow(color = MaterialTheme.colors.primary, targetFrom = Side.Top),
+                            enterAnim = MsgAnimation.FadeInOut(),
+                            exitAnim = MsgAnimation.FadeInOut()
+                        )).showcase(index =6, message =
+                        ShowcaseMsg(
+                            "Right",
+                            textStyle = TextStyle(
+                                color = Color(0xFF827717),
+                                fontSize = 18.sp
+                            ),
+                            msgBackground = MaterialTheme.colors.primary,
+                            gravity = Gravity.Top,
+                            arrow = Arrow(color = MaterialTheme.colors.primary, targetFrom = Side.Right),
+                            enterAnim = MsgAnimation.FadeInOut(),
+                            exitAnim = MsgAnimation.FadeInOut()
+                        )),
                         text = stringResource(R.string.usage),
                         iconId = R.drawable.ic_usage,
                         status = ""
                     ) { coroutineScope.launch { showcaseItem(1) } }
 
                     MainScreenCard(
+                        modifier = Modifier.showcase(index = 7, message =
+                        ShowcaseMsg(
+                            "Left",
+                            textStyle = TextStyle(
+                                color = Color(0xFF827717),
+                                fontSize = 18.sp
+                            ),
+                            msgBackground = MaterialTheme.colors.primary,
+                            gravity = Gravity.Top,
+                            arrow = Arrow(color = MaterialTheme.colors.primary, targetFrom = Side.Left),
+                            enterAnim = MsgAnimation.FadeInOut(),
+                            exitAnim = MsgAnimation.FadeInOut()
+                        )),
                         text = stringResource(R.string.notifications_filter),
                         iconId = R.drawable.ic_notification,
                         status = if (isNotificationFilterEnabled) stringResource(id = R.string.enabled) else stringResource(
