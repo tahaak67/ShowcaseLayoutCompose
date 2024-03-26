@@ -14,7 +14,7 @@ ext["ossrhUsername"] = null
 ext["ossrhPassword"] = null
 
 val publishGroupId: String = "ly.com.tahaben"
-val publishVersion: String = "1.0.5-beta-local"
+val publishVersion: String = "1.0.5"
 val publishArtifactId: String = "showcase-layout-compose"
 
 
@@ -41,7 +41,6 @@ val javadocJar by tasks.registering(Jar::class) {
 }
 
 fun getExtraString(name: String) = ext[name]?.toString()
-
 
 group = publishGroupId
 version = publishVersion
