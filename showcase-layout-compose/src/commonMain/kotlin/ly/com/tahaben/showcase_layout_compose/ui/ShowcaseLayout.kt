@@ -14,6 +14,7 @@ import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
@@ -40,6 +41,7 @@ import androidx.compose.ui.text.drawText
 import androidx.compose.ui.text.rememberTextMeasurer
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.Constraints
+import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.IntSize
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.toSize
@@ -52,6 +54,7 @@ import ly.com.tahaben.showcase_layout_compose.domain.Level
 import ly.com.tahaben.showcase_layout_compose.domain.ShowcaseEventListener
 import ly.com.tahaben.showcase_layout_compose.model.Arrow
 import ly.com.tahaben.showcase_layout_compose.model.Gravity
+import ly.com.tahaben.showcase_layout_compose.model.Head
 import ly.com.tahaben.showcase_layout_compose.model.MsgAnimation
 import ly.com.tahaben.showcase_layout_compose.model.ShowcaseData
 import ly.com.tahaben.showcase_layout_compose.model.ShowcaseMsg
@@ -77,6 +80,7 @@ import kotlin.math.atan2
  */
 
 private const val TAG = "ShowcaseLayout "
+private const val INDEX_RESET_DELAY = 250L
 
 /**
  * ShowcaseLayout
@@ -87,6 +91,7 @@ private const val TAG = "ShowcaseLayout "
  * @param animationDuration total animation time taken when switching from current to next target in milliseconds.
  * @param onFinish what happens when all items are showcased.
  * @param greeting greeting message to be shown before showcasing the first composable, leave [initIndex] at 0 if you want to use this.
+ * @param lineThickness thickness of the arrow line in dp.
  **/
 
 @Composable
@@ -97,11 +102,13 @@ fun ShowcaseLayout(
     animationDuration: Int = 1000,
     onFinish: () -> Unit,
     greeting: ShowcaseMsg? = null,
+    lineThickness: Dp = 5.dp,
     content: @Composable ShowcaseScope.() -> Unit
 ) {
     var currentIndex by remember {
         mutableIntStateOf(initIndex)
     }
+    val resetDelay by derivedStateOf { animationDuration.toLong() + INDEX_RESET_DELAY }
     val scope = ShowcaseScopeImpl(greeting)
     scope.content()
 
@@ -120,7 +127,7 @@ fun ShowcaseLayout(
                     showCasingItem = true
                 } else {
                     showCasingItem = false
-                    delay(animationDuration.toLong() / 2)
+                    delay(resetDelay)
                     currentIndex = initIndex
                 }
             }
@@ -136,7 +143,7 @@ fun ShowcaseLayout(
                     isSingleGreeting = true
                 } else {
                     isSingleGreeting = false
-                    delay(animationDuration.toLong() / 2)
+                    delay(resetDelay)
                     currentIndex = initIndex
                 }
                 singleGreetingMsg = it
@@ -176,6 +183,8 @@ fun ShowcaseLayout(
             val animMsgTextAlpha = remember { Animatable(0f) }
             val animMsgAlpha = remember { Animatable(0f) }
             val animArrow = remember { Animatable(0f) }
+            val animArrowHead = remember { Animatable(0f) }
+
 
             /** to animate current arrow line */
             LaunchedEffect(key1 = currentIndex) {
@@ -197,8 +206,14 @@ fun ShowcaseLayout(
                             )
                         }
                     }
+                    /* animate the arrow */
                     launch {
                         message?.arrow?.let { arrow ->
+                            /** show the arrow if anim is false */
+                            if (!arrow.animSize){
+                                animArrowHead.snapTo(arrow.headSize)
+                            }
+                            /** move the arrow */
                             animArrow.animateTo(
                                 1f,
                                 tween(
@@ -206,6 +221,16 @@ fun ShowcaseLayout(
                                         ?: arrow.animationDuration
                                 )
                             )
+                            /** animate the size of the arrow */
+                            if (arrow.animSize){
+                                animArrowHead.animateTo(
+                                    arrow.headSize,
+                                    tween(
+                                        durationMillis = arrowAnimDuration
+                                            ?: arrow.animationDuration
+                                    )
+                                )
+                            }
                         }
                     }
                 }
@@ -256,6 +281,9 @@ fun ShowcaseLayout(
 
                                 /** hide current arrow */
                                 arrowAnimDuration?.let { duration ->
+                                    if (message?.arrow?.animSize == true){
+                                        animArrowHead.animateTo(0f, tween(duration/2))
+                                    }
                                     launch {
                                         animArrow.animateTo(0f, tween(duration / 2))
                                     }
@@ -306,7 +334,7 @@ fun ShowcaseLayout(
                                         TAG + "finished"
                                     )
                                     onFinish()
-                                    delay(animationDuration.toLong())
+                                    delay(resetDelay)
                                     currentIndex = initIndex
                                 }
                                 isArrowDelayOver = false
@@ -347,7 +375,7 @@ fun ShowcaseLayout(
                         color = if (isDarkLayout) Color.White else Color.Black,
                         alpha = 0.80f,
                     )
-                    val hasArrowHead = message?.arrow?.hasHead == true
+                    val hasArrowHead = message?.arrow?.head != null
                     val arrowHeadMargin = (message?.arrow?.headSize ?: Arrow().headSize) + 25
 
                     if (currentIndex > 0 && shouldDrawArrow) {
@@ -442,31 +470,62 @@ fun ShowcaseLayout(
                         drawPath(
                             path = outPath,
                             color = arrowColor,
-                            style = Stroke(width = 5.dp.toPx(), cap = StrokeCap.Round)
+                            style = Stroke(width = lineThickness.toPx(), cap = StrokeCap.Round)
                         )
 
                         /** draw the arrow head (and rotate if needed) */
-                        if (message?.arrow?.hasHead == true) {
-                            val arrowSize = message?.arrow?.headSize ?: Arrow().headSize
-                            val x = pos[0]
-                            val y = pos[1]
-                            val degrees = -atan2(tan[0], tan[1]) * (180f / PI.toFloat()) - 180f
-                            scope.showcaseEventListener?.onEvent(
-                                Level.VERBOSE,
-                                TAG + "max canvas: x:${size.width} y:${size.height}"
-                            )
-                            rotate(degrees = degrees, pivot = Offset(x, y)) {
-                                drawPath(
-                                    path = Path().apply {
-                                        moveTo(x, y - arrowSize)
-                                        lineTo(x - arrowSize, y + arrowSize)
-                                        lineTo(x + arrowSize, y + arrowSize)
-                                        close()
-                                    },
+                        val arrowSize = animArrowHead.value
+                        val x = pos[0]
+                        val y = pos[1]
+                        val degrees = -atan2(tan[0], tan[1]) * (180f / PI.toFloat()) - 180f
+                        scope.showcaseEventListener?.onEvent(
+                            Level.VERBOSE,
+                            TAG + "max canvas: x:${size.width} y:${size.height}"
+                        )
+                        when (message?.arrow?.head) {
+                            Head.CIRCLE -> {
+                                drawCircle(
+                                    center = Offset(x,y),
                                     color = arrowColor,
-                                    alpha = animArrow.value
+                                    alpha = animArrow.value,
+                                    radius = arrowSize
+                                )
+
+                            }
+                            Head.TRIANGLE -> {
+                                rotate(degrees = degrees, pivot = Offset(x, y)) {
+                                    drawPath(
+                                        path = Path().apply {
+                                            moveTo(x, y - arrowSize)
+                                            lineTo(x - arrowSize, y + arrowSize)
+                                            lineTo(x + arrowSize, y + arrowSize)
+                                            close()
+                                        },
+                                        color = arrowColor,
+                                        alpha = animArrow.value
+                                    )
+                                }
+                            }
+                            Head.SQUARE -> {
+                                drawRect(
+                                    topLeft = Offset(x - arrowSize.div(2),y - arrowSize.div(2)),
+                                    color = arrowColor,
+                                    alpha = animArrow.value,
+                                    size = Size(arrowSize,arrowSize)
                                 )
                             }
+                            Head.ROUND_SQUARE -> {
+                                val radius = arrowSize.div(4)
+                                drawRoundRect(
+                                    topLeft = Offset(x - arrowSize.div(2),y - arrowSize.div(2)),
+                                    color = arrowColor,
+                                    alpha = animArrow.value,
+                                    size = Size(arrowSize,arrowSize),
+                                    cornerRadius = CornerRadius(radius,radius)
+                                )
+                            }
+                            null -> Unit
+
                         }
 
                     }
@@ -525,7 +584,7 @@ fun ShowcaseLayout(
                         will get cut off, if that's the case we align the message Start or End to
                         the target Start or End as appropriate
                          */
-                        val xOffset = if (currentIndex == 0) {
+                        val xOffset = if (currentIndex == 0 || msg.arrow?.curved == true) {
                             halfWidth - messageWidthHalf
                         } else {
                             val currentItemXPosition = scope.getPositionFor(currentIndex).x

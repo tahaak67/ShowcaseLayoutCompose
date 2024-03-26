@@ -50,6 +50,7 @@ import ly.com.tahaben.showcase_layout_compose.domain.Level
 import ly.com.tahaben.showcase_layout_compose.domain.ShowcaseEventListener
 import ly.com.tahaben.showcase_layout_compose.model.Arrow
 import ly.com.tahaben.showcase_layout_compose.model.Gravity
+import ly.com.tahaben.showcase_layout_compose.model.Head
 import ly.com.tahaben.showcase_layout_compose.model.MsgAnimation
 import ly.com.tahaben.showcase_layout_compose.model.ShowcaseMsg
 import ly.com.tahaben.showcase_layout_compose.model.Side
@@ -96,7 +97,8 @@ fun MainScreen(
             textStyle = TextStyle(color = Color.Black, textAlign = TextAlign.Center),
             msgBackground = Color.White,
             roundedCorner = 15.dp
-        )
+        ),
+        animationDuration = 100
     ) {
         registerEventListener(eventListener = object : ShowcaseEventListener {
 
@@ -219,7 +221,7 @@ fun MainScreen(
                                     msgBackground = Color(0xFFE0F2F1),
                                     arrow = Arrow(
                                         targetFrom = Side.Top,
-                                        hasHead = false,
+                                        head = null,
                                         color = MaterialTheme.colors.primary
                                     )
                                 )
@@ -248,7 +250,7 @@ fun MainScreen(
                                 ),
                                 msgBackground = MaterialTheme.colors.primary,
                                 gravity = Gravity.Bottom,
-                                arrow = Arrow(color = MaterialTheme.colors.primary),
+                                arrow = Arrow(color = MaterialTheme.colors.primary, animSize = false),
                                 enterAnim = MsgAnimation.FadeInOut(),
                                 exitAnim = MsgAnimation.FadeInOut()
                             )
@@ -261,7 +263,7 @@ fun MainScreen(
                             ),
                             msgBackground = MaterialTheme.colors.primary,
                             gravity = Gravity.Top,
-                            arrow = Arrow(color = MaterialTheme.colors.primary, targetFrom = Side.Top, headSize = 30f),
+                            arrow = Arrow(color = MaterialTheme.colors.primary, targetFrom = Side.Top, headSize = 30f, head = Head.CIRCLE, animSize = true),
                             enterAnim = MsgAnimation.FadeInOut(),
                             exitAnim = MsgAnimation.FadeInOut()
                         )).showcase(index =6, message =
@@ -273,29 +275,17 @@ fun MainScreen(
                             ),
                             msgBackground = MaterialTheme.colors.primary,
                             gravity = Gravity.Top,
-                            arrow = Arrow(color = MaterialTheme.colors.primary, targetFrom = Side.Right, headSize = 35f),
+                            arrow = Arrow(color = MaterialTheme.colors.primary, targetFrom = Side.Right, headSize = 35f, head = Head.ROUND_SQUARE, animSize = false),
                             enterAnim = MsgAnimation.FadeInOut(),
                             exitAnim = MsgAnimation.FadeInOut()
                         )),
                         text = stringResource(R.string.usage),
                         iconId = R.drawable.ic_usage,
                         status = ""
-                    ) { coroutineScope.launch { showcaseItem(1) } }
+                    ) { coroutineScope.launch { showcaseItem(5) } }
 
                     MainScreenCard(
-                        modifier = Modifier.showcase(index = 7, message =
-                        ShowcaseMsg(
-                            "Left",
-                            textStyle = TextStyle(
-                                color = Color(0xFF827717),
-                                fontSize = 18.sp
-                            ),
-                            msgBackground = MaterialTheme.colors.primary,
-                            gravity = Gravity.Top,
-                            arrow = Arrow(color = MaterialTheme.colors.primary, targetFrom = Side.Left, headSize = 45f),
-                            enterAnim = MsgAnimation.FadeInOut(),
-                            exitAnim = MsgAnimation.FadeInOut()
-                        )),
+                        modifier = Modifier,
                         text = stringResource(R.string.notifications_filter),
                         iconId = R.drawable.ic_notification,
                         status = if (isNotificationFilterEnabled) stringResource(id = R.string.enabled) else stringResource(

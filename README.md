@@ -17,7 +17,7 @@ Create a beautiful animated showcase effect for your compose UIs easily !
 
 <img src="metadata/gif/slc-light.gif" alt="Library demo GIF" width="300" />
 
-## Usage
+## Setup
 
 Showcase Layout Compose can be used in **both** Jetpack Compose (native Android) or Compose Multiplatform (Kotlin Multiplatform) projects.
 
@@ -27,8 +27,9 @@ Showcase Layout Compose can be used in **both** Jetpack Compose (native Android)
 Add the dependency to your module's `build.gradle` file like below
 
 ``` kotlin
-implementation("ly.com.tahaben:showcase-layout-compose:1.0.5-beta")
+implementation("ly.com.tahaben:showcase-layout-compose:1.0.6-beta")
 ```
+## Usage
 
 #### Step 1
 
@@ -67,7 +68,7 @@ text "ShowcaseLayout Test 1"
 Text(
     modifier = Modifier.showcase(
         // should start with 1 and increment with 1 for each time you use Modifier.showcase()
-        k = 1,
+        index = 1,
         message =
     ),
     text = "ShowcaseLayout Test 1"
@@ -79,9 +80,43 @@ you also use the old method by wrap the composables you want to showcase with `S
 
 #### Step 3
 
-Start showcasing by making `isShowcasing = true`, and stop showcasing by making it false \
+You have 2 ways of showcasing, showcase everything subsequently or showcasing each item manually  
+<details>
+
+<summary> <b> Showcase all items subsequently</b>  </summary>
+Start showcasing by making <code>isShowcasing = true</code>, and stop showcasing by making it false 
 above we stop showcasing after we showcase the last item using `onFinished` which is called whenever
 all items are showcased,
+</details>
+
+<details>
+
+<summary> <b>Showcase a single item (1.0.6-beta and up)</b> </summary>
+After you attach the index and showcase message to your components you can simply call <code>showcaseItem(i)</code> where i is the index of the item you want to showcase
+
+```kotlin
+    val coroutineScope = rememberCoroutineScope()
+
+    coroutineScope.launch{
+        showcaseItem(1)
+    }
+```
+similarly you can show a greeting using <code>showGreeting</code> and passing the message
+
+```kotlin
+    val coroutineScope = rememberCoroutineScope()
+
+    coroutineScope.launch{
+        showGreeting(
+            ShowcaseMsg(
+            text = "I like compose bro <3",
+            textStyle = TextStyle(color = Color.White)
+            )
+        )
+    }
+```
+</details>
+
 
 Done, our text is now showcased!, customize it further with Additional parameters
 
@@ -126,7 +161,7 @@ ShowcaseLayout(
  <img src="metadata/screenshots/screenshot-7.jpg" alt="Greeting msg example"  width="250" />
  </p>
 
-#### initKey
+#### initIndex
 
 the initial value of the counter, set this to 1 if you don't want a greeting message before
 showcasing targets.
@@ -218,11 +253,12 @@ arrow = Arrow(
 In recent releases logs have been disabled by default, to print log statement of the current actions taken by compose layout register a listener in your ShowcaseLayout
 ```kotlin
         registerEventListener(object: ShowcaseEventListener {
-            override fun onEvent(event: String) {
-                println(event)
+            override fun onEvent(level: Level, event: String) {
+                println("$level: $event")
             }
         })
 ```
+
 
 ## Complete Example
 
