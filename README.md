@@ -2,10 +2,12 @@
 [![GitHub issues](https://img.shields.io/github/issues/tahaak67/ShowcaseLayoutCompose)](https://github.com/tahaak67/ShowcaseLayoutCompose/issues)
 [![GitHub stars](https://img.shields.io/github/stars/tahaak67/ShowcaseLayoutCompose)](https://github.com/tahaak67/ShowcaseLayoutCompose/stargazers)
 [![GitHub license](https://img.shields.io/github/license/tahaak67/ShowcaseLayoutCompose)](https://github.com/tahaak67/ShowcaseLayoutCompose/blob/main/LICENSE)
-[![Compose Multiplatform](https://img.shields.io/badge/Compose%20Multiplatform-v1.5.0-blue)](https://github.com/JetBrains/compose-multiplatform)
+[![Compose Multiplatform](https://img.shields.io/badge/Compose%20Multiplatform-v1.6.1-blue)](https://github.com/JetBrains/compose-multiplatform)
 ![badge-android](http://img.shields.io/badge/platform-android-3DDC84.svg)
 ![badge-ios](http://img.shields.io/badge/platform-ios-CDCDCD.svg)
 ![badge-desktop](http://img.shields.io/badge/platform-desktop-DB413D.svg)
+![badge-web](https://img.shields.io/badge/platform-web-orange?logoColor=gray)
+
 
 # Showcase Layout Compose
 
@@ -17,6 +19,8 @@ Create a beautiful animated showcase effect for your compose UIs easily !
 
 <img src="metadata/gif/slc-light.gif" alt="Library demo GIF" width="300" />
 
+<img src="metadata/screenshots/screenshot-13.png" alt="Library demo GIF" width="300" />.<img src="metadata/screenshots/screenshot-14.png" alt="Library demo GIF" width="300" />
+
 ## Setup
 
 Showcase Layout Compose can be used in **both** Jetpack Compose (native Android) or Compose Multiplatform (Kotlin Multiplatform) projects.
@@ -27,7 +31,7 @@ Showcase Layout Compose can be used in **both** Jetpack Compose (native Android)
 Add the dependency to your module's `build.gradle` file like below
 
 ``` kotlin
-implementation("ly.com.tahaben:showcase-layout-compose:1.0.6-beta")
+implementation("ly.com.tahaben:showcase-layout-compose:1.0.5")
 ```
 ## Usage
 
@@ -91,7 +95,7 @@ all items are showcased,
 
 <details>
 
-<summary> <b>Showcase a single item (1.0.6-beta and up)</b> </summary>
+<summary> <b>Showcase a single item (1.0.5 and up)</b> </summary>
 After you attach the index and showcase message to your components you can simply call <code>showcaseItem(i)</code> where i is the index of the item you want to showcase
 
 ```kotlin
@@ -245,9 +249,39 @@ arrow = Arrow(
 )
 ``` 
 
-| Default Arrow | `curved = true` | `hasHead = false` |
-| :---------------: | :---------------: | :---------------: |
-|<img src="metadata/screenshots/screenshot-1.png" align="center" alt="Screenshot"  width="250" /> | <img src="metadata/screenshots/screenshot-2.png" align="center" alt="Screenshot"  width="250" />| <img src="metadata/screenshots/screenshot-3.png" align="center" alt="Screenshot"  width="250" />|
+|                                          Default Arrow                                           |                                         `curved = true`                                          |                                        `hasHead = false`                                         |
+|:------------------------------------------------------------------------------------------------:|:------------------------------------------------------------------------------------------------:|:------------------------------------------------------------------------------------------------:|
+| <img src="metadata/screenshots/screenshot-1.png" align="center" alt="Screenshot"  width="250" /> | <img src="metadata/screenshots/screenshot-2.png" align="center" alt="Screenshot"  width="250" /> | <img src="metadata/screenshots/screenshot-3.png" align="center" alt="Screenshot"  width="250" /> |
+
+#### Head style
+By default, an Arrow will have a triangle as the head to change this, set `head` in the arrow to one of these options
+
+|                                                 `TRIANGLE`                                                 |                                                `CIRCLE`                                                 |                                                 `SQUARE`                                                 |                                                 `ROUND_SQUARE`                                                 |
+|:----------------------------------------------------------------------------------------------------------:|:-------------------------------------------------------------------------------------------------------:|:--------------------------------------------------------------------------------------------------------:|:--------------------------------------------------------------------------------------------------------------:|
+| <img src="metadata/screenshots/screenshot-12-triangle.png" align="center" alt="Screenshot"  width="250" /> | <img src="metadata/screenshots/screenshot-9-circle.png" align="center" alt="Screenshot"  width="250" /> | <img src="metadata/screenshots/screenshot-10-square.png" align="center" alt="Screenshot"  width="250" /> | <img src="metadata/screenshots/screenshot-11-round-square.png" align="center" alt="Screenshot"  width="250" /> |
+
+You can also animate the arrow head and change the size, see the example below.
+```kotlin
+showcase(
+    index = 5, 
+    message = ShowcaseMsg(
+        "A Circle !",
+        textStyle = TextStyle(
+            color = Color(0xFF827717),
+            fontSize = 18.sp
+        ),
+        msgBackground = MaterialTheme.colors.primary,
+        gravity = Gravity.Top,
+        arrow = Arrow(
+            color = MaterialTheme.colors.primary,
+            targetFrom = Side.Top,
+            head = Head.CIRCLE, // head style
+            headSize = 30f, // the size of the circle
+            animSize = true // animates the arrow head size
+        )
+    )
+)
+```
 
 ## Logging Events
 In recent releases logs have been disabled by default, to print log statement of the current actions taken by compose layout register a listener in your ShowcaseLayout
@@ -276,4 +310,4 @@ Showcase Layout is used by:
 
 - [Farhan](https://github.com/tahaak67/Farhan)
 
-Contact me if you used ShowcaseLayout in your app, and you want it added to this list
+Contact me on LinkedIn or open an issue if you used ShowcaseLayout in your app, and you want it added to this list
