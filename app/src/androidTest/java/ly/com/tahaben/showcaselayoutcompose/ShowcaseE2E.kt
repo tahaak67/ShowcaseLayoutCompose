@@ -3,6 +3,7 @@ package ly.com.tahaben.showcaselayoutcompose
 import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.junit4.createComposeRule
 import androidx.compose.ui.test.onNodeWithTag
+import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
 import ly.com.tahaben.showcaselayoutcompose.ui.MainScreen
 import ly.com.tahaben.showcaselayoutcompose.ui.theme.ShowcaseLayoutComposeTheme
@@ -60,6 +61,39 @@ class ShowcaseE2E {
         composeRule
             .onNodeWithTag("canvas")
             .performClick()
+        composeRule
+            .onNodeWithTag("canvas")
+            .performClick()
+        composeRule
+            .onNodeWithTag("canvas")
+            .performClick()
+        composeRule
+            .onNodeWithTag("canvas")
+            .performClick()
+        composeRule
+            .onNodeWithTag("canvas")
+            .performClick()
+        composeRule
+            .onNodeWithTag("canvas")
+            .assertDoesNotExist()
+        composeRule
+            .onNodeWithText("Usage")
+            .performClick()
+        composeRule
+            .onNodeWithTag("canvas")
+            .assertIsDisplayed()
+        composeRule
+            .onNodeWithTag("canvas")
+            .performClick()
+        composeRule
+            .onNodeWithTag("canvas")
+            .assertDoesNotExist()
+        composeRule
+            .onNodeWithText("Hello")
+            .performClick()
+        composeRule
+            .onNodeWithTag("canvas")
+            .assertIsDisplayed()
         composeRule
             .onNodeWithTag("canvas")
             .performClick()

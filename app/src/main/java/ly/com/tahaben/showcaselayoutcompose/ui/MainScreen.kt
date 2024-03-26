@@ -2,6 +2,7 @@ package ly.com.tahaben.showcaselayoutcompose.ui
 
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
@@ -29,6 +30,7 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -43,9 +45,12 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.launch
+import ly.com.tahaben.showcase_layout_compose.domain.Level
 import ly.com.tahaben.showcase_layout_compose.domain.ShowcaseEventListener
 import ly.com.tahaben.showcase_layout_compose.model.Arrow
 import ly.com.tahaben.showcase_layout_compose.model.Gravity
+import ly.com.tahaben.showcase_layout_compose.model.Head
 import ly.com.tahaben.showcase_layout_compose.model.MsgAnimation
 import ly.com.tahaben.showcase_layout_compose.model.ShowcaseMsg
 import ly.com.tahaben.showcase_layout_compose.model.Side
@@ -66,6 +71,7 @@ fun MainScreen(
     var isShowcasing by remember {
         mutableStateOf(false)
     }
+    val coroutineScope = rememberCoroutineScope()
     LaunchedEffect(key1 = true) {
         delay(500)
         isShowcasing = true
@@ -91,11 +97,16 @@ fun MainScreen(
             textStyle = TextStyle(color = Color.Black, textAlign = TextAlign.Center),
             msgBackground = Color.White,
             roundedCorner = 15.dp
-        )
+        ),
+        animationDuration = 100
     ) {
-        registerEventListener(object: ShowcaseEventListener {
-            override fun onEvent(event: String) {
-                println(event)
+        registerEventListener(eventListener = object : ShowcaseEventListener {
+
+            override fun onEvent(level: Level, event: String) {
+                when (level) {
+                    Level.DEBUG, Level.INFO, Level.WARNING -> println(event)
+                    else -> Unit
+                }
             }
         })
         Column(
@@ -113,7 +124,7 @@ fun MainScreen(
                     IconButton(onClick = { mDisplayMenu = !mDisplayMenu }) {
                         Icon(
                             modifier = Modifier.showcase(
-                                k = 3,
+                                index = 3,
                                 message = ShowcaseMsg(
                                     buildAnnotatedString {
                                         append("From the ")
@@ -176,6 +187,16 @@ fun MainScreen(
             ) {
                 Spacer(modifier = Modifier.height(spacing.spaceExtraLarge))
                 Text(
+                    modifier = Modifier.clickable {
+                        coroutineScope.launch {
+                            showGreeting(
+                                ShowcaseMsg(
+                                    text = "I love banana bro <3",
+                                    textStyle = TextStyle(color = Color.White)
+                                )
+                            )
+                        }
+                    },
                     text = stringResource(id = R.string.hello),
                     style = MaterialTheme.typography.h1,
                     color = MaterialTheme.colors.onPrimary
@@ -192,19 +213,20 @@ fun MainScreen(
                     Spacer(modifier = Modifier.width(spacing.spaceExtraSmall))
 
                     Text(
-                        modifier = Modifier.showcase(
-                            k = 4, message = ShowcaseMsg(
-                                "Useful tip tho :P",
-                                textStyle = TextStyle(color = Color.DarkGray),
-                                msgBackground = Color(0xFFE0F2F1),
-                                arrow = Arrow(
-                                    targetFrom = Side.Top,
-                                    hasHead = false,
-                                    color = MaterialTheme.colors.primary
-                                ),
-
+                        modifier = Modifier
+                            .showcase(
+                                index = 4, message = ShowcaseMsg(
+                                    "Useful tip tho :P",
+                                    textStyle = TextStyle(color = Color.DarkGray),
+                                    msgBackground = Color(0xFFE0F2F1),
+                                    arrow = Arrow(
+                                        targetFrom = Side.Top,
+                                        head = null,
+                                        color = MaterialTheme.colors.primary
+                                    )
                                 )
-                        ),
+                            )
+                            .clickable { coroutineScope.launch { showcaseItem(4) } },
                         text = tip,
                         style = MaterialTheme.typography.h5,
                         color = MaterialTheme.colors.onPrimary
@@ -217,28 +239,53 @@ fun MainScreen(
                     horizontalArrangement = Arrangement.SpaceEvenly
                 ) {
 
-                        MainScreenCard(
-                            modifier = Modifier.showcase(
-                                k = 1, message =
-                                ShowcaseMsg(
-                                    "Track your phone usage from here",
-                                    textStyle = TextStyle(
-                                        color = Color(0xFF827717),
-                                        fontSize = 18.sp
-                                    ),
-                                    msgBackground = MaterialTheme.colors.primary,
-                                    gravity = Gravity.Bottom,
-                                    arrow = Arrow(color = MaterialTheme.colors.primary),
-                                    enterAnim = MsgAnimation.FadeInOut(),
-                                    exitAnim = MsgAnimation.FadeInOut()
-                                )
+                    MainScreenCard(
+                        modifier = Modifier.showcase(
+                            index = 1, message =
+                            ShowcaseMsg(
+                                "Track your phone usage from here",
+                                textStyle = TextStyle(
+                                    color = Color(0xFF827717),
+                                    fontSize = 18.sp
+                                ),
+                                msgBackground = MaterialTheme.colors.primary,
+                                gravity = Gravity.Bottom,
+                                arrow = Arrow(color = MaterialTheme.colors.primary, animSize = false),
+                                enterAnim = MsgAnimation.FadeInOut(),
+                                exitAnim = MsgAnimation.FadeInOut()
+                            )
+                        ).showcase(index = 5, message =
+                        ShowcaseMsg(
+                            "From top !",
+                            textStyle = TextStyle(
+                                color = Color(0xFF827717),
+                                fontSize = 18.sp
                             ),
-                            text = stringResource(R.string.usage),
-                            iconId = R.drawable.ic_usage,
-                            status = ""
-                        ) { }
+                            msgBackground = MaterialTheme.colors.primary,
+                            gravity = Gravity.Top,
+                            arrow = Arrow(color = MaterialTheme.colors.primary, targetFrom = Side.Top, headSize = 30f, head = Head.CIRCLE, animSize = true),
+                            enterAnim = MsgAnimation.FadeInOut(),
+                            exitAnim = MsgAnimation.FadeInOut()
+                        )).showcase(index =6, message =
+                        ShowcaseMsg(
+                            "Right",
+                            textStyle = TextStyle(
+                                color = Color(0xFF827717),
+                                fontSize = 18.sp
+                            ),
+                            msgBackground = MaterialTheme.colors.primary,
+                            gravity = Gravity.Top,
+                            arrow = Arrow(color = MaterialTheme.colors.primary, targetFrom = Side.Right, headSize = 35f, head = Head.ROUND_SQUARE, animSize = false),
+                            enterAnim = MsgAnimation.FadeInOut(),
+                            exitAnim = MsgAnimation.FadeInOut()
+                        )),
+                        text = stringResource(R.string.usage),
+                        iconId = R.drawable.ic_usage,
+                        status = ""
+                    ) { coroutineScope.launch { showcaseItem(5) } }
 
                     MainScreenCard(
+                        modifier = Modifier,
                         text = stringResource(R.string.notifications_filter),
                         iconId = R.drawable.ic_notification,
                         status = if (isNotificationFilterEnabled) stringResource(id = R.string.enabled) else stringResource(
@@ -258,14 +305,14 @@ fun MainScreen(
                             id = R.string.disabled
                         )
                     ) { }
-                        MainScreenCard(
-                            modifier = Modifier.showcase(k = 2, message = null),
-                            text = stringResource(R.string.infinite_scrolling),
-                            iconId = R.drawable.ic_swipe_vertical_24,
-                            status = if (isInfiniteScrollBlockerEnabled) stringResource(id = R.string.enabled) else stringResource(
-                                id = R.string.disabled
-                            )
-                        ) { }
+                    MainScreenCard(
+                        modifier = Modifier.showcase(index = 2, message = null),
+                        text = stringResource(R.string.infinite_scrolling),
+                        iconId = R.drawable.ic_swipe_vertical_24,
+                        status = if (isInfiniteScrollBlockerEnabled) stringResource(id = R.string.enabled) else stringResource(
+                            id = R.string.disabled
+                        )
+                    ) { coroutineScope.launch { showcaseItem(2) } }
 
                 }
                 Spacer(modifier = Modifier.height(spacing.spaceMedium))

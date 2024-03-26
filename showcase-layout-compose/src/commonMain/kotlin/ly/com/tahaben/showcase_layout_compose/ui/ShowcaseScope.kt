@@ -27,19 +27,19 @@ interface ShowcaseScope {
     /**
      * Showcase ShowcaseScope
      *
-     * @param k key of current item MUST start at 1 and increment by 1 for each composable inside this ShowcaseLayout.
+     * @param index key of current item MUST start at 1 and increment by 1 for each composable inside this ShowcaseLayout.
      * @param message a message to display when showcasing this composable.
      **/
     @Composable
-    fun Showcase(k: Int, message: ShowcaseMsg?, itemContent: @Composable () -> Unit)
+    fun Showcase(index: Int, message: ShowcaseMsg?, itemContent: @Composable () -> Unit)
 
     /**
      * Showcase ShowcaseScope
      *
-     * @param k key of current item MUST start at 1 and increment by 1 for each composable inside this ShowcaseLayout.
+     * @param index key of current item **MUST** start at 1 and increment by 1 for each composable inside this ShowcaseLayout.
      * @param message a message to display when showcasing this composable.
      **/
-    fun Modifier.showcase(k: Int, message: ShowcaseMsg?): Modifier
+    fun Modifier.showcase(index: Int, message: ShowcaseMsg?): Modifier
 
 
     var showcaseEventListener: ShowcaseEventListener?
@@ -50,4 +50,9 @@ interface ShowcaseScope {
      * @param eventListener the [ShowcaseEventListener] to use.
      **/
     fun registerEventListener(eventListener: ShowcaseEventListener)
+
+    suspend fun showcaseItem(index: Int)
+//    suspend fun showcaseItemFinished()
+    suspend fun showGreeting(message: ShowcaseMsg)
+//    suspend fun showGreetingFinished()
 }

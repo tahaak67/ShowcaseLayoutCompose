@@ -1,3 +1,6 @@
+import org.jetbrains.kotlin.gradle.targets.js.dsl.ExperimentalWasmDsl
+import org.jetbrains.kotlin.gradle.targets.js.webpack.KotlinWebpackConfig
+
 plugins {
     kotlin("multiplatform")
     id("com.android.library")
@@ -15,7 +18,22 @@ kotlin {
     iosArm64()
     iosSimulatorArm64()
 
-
+    @OptIn(ExperimentalWasmDsl::class)
+    wasmJs {
+        moduleName = "composeApp"
+        browser {
+            commonWebpackConfig {
+                outputFileName = "composeApp.js"
+                devServer = (devServer ?: KotlinWebpackConfig.DevServer()).apply {
+                    static = (static ?: mutableListOf()).apply {
+                        // Serve sources to debug inside browser
+                        add(project.projectDir.path)
+                    }
+                }
+            }
+        }
+        binaries.executable()
+    }
 
 
     sourceSets {
@@ -47,7 +65,7 @@ kotlin {
 }
 
 android {
-    compileSdk = 33
+    compileSdk = 34
     namespace = "ly.com.tahaben.showcaselayoutcompose"
 
     compileOptions {
@@ -57,4 +75,9 @@ android {
     kotlin {
         jvmToolchain(17)
     }
+}
+
+
+compose.experimental {
+    web.application {}
 }
