@@ -1,9 +1,10 @@
-
+enableFeaturePreview("TYPESAFE_PROJECT_ACCESSORS")
 pluginManagement {
     repositories {
         google()
         gradlePluginPortal()
         mavenCentral()
+        maven("https://maven.pkg.jetbrains.space/public/p/compose/dev")
     }
 }
 plugins {
@@ -13,9 +14,11 @@ dependencyResolutionManagement {
     repositories {
         google()
         mavenCentral()
+        maven("https://maven.pkg.jetbrains.space/public/p/compose/dev")
     }
 }
-rootProject.name = "Showcase Layout Compose"
+rootProject.name = "Showcase-Layout-Compose-KMP"
 include (":app")
 include (":showcase-layout-compose")
 includeBuild("convention-plugins")
+include (":composeApp")

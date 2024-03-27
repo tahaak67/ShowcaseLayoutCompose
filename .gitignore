@@ -25,3 +25,14 @@ local.properties
 /.idea/misc.xml
 /.idea/vcs.xml
 /convention-plugins/build/*
+**/build/
+xcuserdata
+!src/**/build/
+.idea
+captures
+*.xcodeproj/*
+!*.xcodeproj/project.pbxproj
+!*.xcodeproj/xcshareddata/
+!*.xcodeproj/project.xcworkspace/
+!*.xcworkspace/contents.xcworkspacedata
+**/xcshareddata/WorkspaceSettings.xcsettings
