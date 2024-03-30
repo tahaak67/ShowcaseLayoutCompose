@@ -15,6 +15,9 @@ Create a beautiful animated showcase effect for your compose UIs easily !
 
 **Now with multiplatform support :D**
 
+## Web demo
+[Click here](https://tahaak67.github.io/ShowcaseLayoutCompose/index.html) to try showcase layout for web in your browser!
+
 ## Demo
 
 <img src="metadata/gif/slc-light.gif" alt="Library demo GIF" width="300" />
