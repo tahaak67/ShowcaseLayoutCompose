@@ -10,3 +10,5 @@ class UrlLauncherWeb() : UrlLauncher {
         }
     }
 }
+
+external fun onLoadFinished()

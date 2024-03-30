@@ -35,6 +35,7 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -70,7 +71,8 @@ import kotlin.math.roundToInt
 @OptIn(ExperimentalResourceApi::class, ExperimentalMaterial3Api::class)
 @Preview
 @Composable
-fun App(openUrl: (String) -> Boolean) {
+fun App(openUrl: (String) -> Boolean, onWebLoadFinish: ()-> Unit = {} ) {
+    LaunchedEffect(key1 = Unit, block = { onWebLoadFinish() })
     var messageText by remember { mutableStateOf("A sample showcase message 🙃") }
     var selectedTarget by remember { mutableStateOf("Toolbar title") }
     var selectTargetMenuExpaned by remember { mutableStateOf(false) }
@@ -105,7 +107,7 @@ fun App(openUrl: (String) -> Boolean) {
     var headSize by remember { mutableStateOf(25f) }
     var lineThinckness by remember { mutableStateOf(5) }
     val scrollState = rememberScrollState()
-    MyTheme {
+    MyTheme(useDarkTheme = false) {
         ShowcaseLayout(
             isShowcasing = isShowcasing,
             onFinish = { isShowcasing = false },

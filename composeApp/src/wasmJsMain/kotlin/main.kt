@@ -3,5 +3,5 @@ import androidx.compose.ui.window.CanvasBasedWindow
 
 @OptIn(ExperimentalComposeUiApi::class)
 fun main() {
-    CanvasBasedWindow(canvasElementId = "ComposeTarget") { App(openUrl = UrlLauncherWeb()::openUrl) }
+    CanvasBasedWindow(canvasElementId = "ComposeTarget") { App(openUrl = UrlLauncherWeb()::openUrl , onWebLoadFinish = ::onLoadFinished) }
 }
