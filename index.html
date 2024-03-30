@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <title>Compose App</title>
+    <title>Showcase Layout Compose Demo</title>
     <style>
         #loading-indicator {
             display: flex;
@@ -44,12 +44,11 @@
     <div class="spinner"></div>
 </div>
 <canvas id="ComposeTarget"></canvas>
-<script src="openurl.js"></script>
+<script src="util.js"></script>
 <script>
-    window.onload = function() {
-        // Hide the loading indicator when the page is fully loaded
+    document.addEventListener("app-loaded", function() {
         document.getElementById("loading-indicator").style.display = "none";
-    };
+    });
 </script>
 </body>
 </html>
