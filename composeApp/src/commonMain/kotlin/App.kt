@@ -45,12 +45,21 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.drawBehind
+import androidx.compose.ui.geometry.CornerRadius
+import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalClipboardManager
 import androidx.compose.ui.semantics.Role
+import androidx.compose.ui.text.ParagraphStyle
+import androidx.compose.ui.text.SpanStyle
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.buildAnnotatedString
+import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.text.withStyle
 import androidx.compose.ui.unit.dp
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import ly.com.tahaben.showcase_layout_compose.model.Arrow
 import ly.com.tahaben.showcase_layout_compose.model.Head
@@ -71,16 +80,22 @@ import kotlin.math.roundToInt
 @OptIn(ExperimentalResourceApi::class, ExperimentalMaterial3Api::class)
 @Preview
 @Composable
-fun App(openUrl: (String) -> Boolean, onWebLoadFinish: ()-> Unit = {} ) {
+fun App(openUrl: (String) -> Boolean, onWebLoadFinish: () -> Unit = {}) {
     LaunchedEffect(key1 = Unit, block = { onWebLoadFinish() })
-    var messageText by remember { mutableStateOf("A sample showcase message 🙃") }
+
     var selectedTarget by remember { mutableStateOf("Toolbar title") }
     var selectTargetMenuExpaned by remember { mutableStateOf(false) }
     var selectHeadMenuExpaned by remember { mutableStateOf(false) }
     val clipboardManager = LocalClipboardManager.current
-    val snackbarHostState = remember {SnackbarHostState()}
+    val snackbarHostState = remember { SnackbarHostState() }
+    var finishedSubsequentShowcase by remember { mutableStateOf(false) }
     val targets =
-        mapOf("Toolbar title" to 1, "Toolbar menu icon" to 2, "Message text field" to 3, "Showcase Button" to 4)
+        mapOf(
+            "Toolbar title" to 1,
+            "Toolbar menu icon" to 2,
+            "Showcase Button" to 3,
+            "Target Dropdown menu" to 4
+        )
     val arrowHeadMap =
         mapOf(
             "Triangle" to Res.drawable.triangle,
@@ -106,14 +121,25 @@ fun App(openUrl: (String) -> Boolean, onWebLoadFinish: ()-> Unit = {} ) {
     var msgCornerRadius by remember { mutableStateOf(0) }
     var headSize by remember { mutableStateOf(25f) }
     var lineThinckness by remember { mutableStateOf(5) }
+    var durationSliderValue by remember { mutableStateOf(500) }
+    var animationDuration by remember { mutableStateOf(500) }
     val scrollState = rememberScrollState()
+    val greetingMsg = buildAnnotatedString {
+        withStyle(ParagraphStyle(textAlign = TextAlign.Center)){
+            append("Welcome to ")
+            pushStyle(SpanStyle(fontWeight = FontWeight.Bold))
+            append("Showcase Layout Compose Demo ")
+            pop()
+            append("lets take you on a quick tour!")
+        }
+    }
     MyTheme(useDarkTheme = false) {
         ShowcaseLayout(
             isShowcasing = isShowcasing,
-            onFinish = { isShowcasing = false },
-            greeting = ShowcaseMsg(messageText, textStyle = TextStyle(color = Color.White)),
+            onFinish = { isShowcasing = false; finishedSubsequentShowcase = true },
+            greeting = ShowcaseMsg(greetingMsg, textStyle = TextStyle(color = Color.White)),
             lineThickness = lineThinckness.dp,
-            animationDuration = 800
+            animationDuration = animationDuration
         ) {
             Column(modifier = Modifier.fillMaxSize().verticalScroll(scrollState)) {
                 TopAppBar(title = {
@@ -121,11 +147,16 @@ fun App(openUrl: (String) -> Boolean, onWebLoadFinish: ()-> Unit = {} ) {
                         modifier = Modifier
                             .showcase(
                                 1, message = ShowcaseMsg(
-                                    text = messageText,
+                                    text = "This is the title of the toolbar 🤫",
                                     msgBackground = msgBackground,
                                     roundedCorner = msgCornerRadius.dp,
-                                    arrow = Arrow(animSize = animateHead, head = headType, headSize = headSize),
-                                    enterAnim = if (animateMsg) MsgAnimation.FadeInOut() else MsgAnimation.None
+                                    arrow = Arrow(
+                                        animSize = animateHead,
+                                        head = headType,
+                                        headSize = headSize,
+                                        animationDuration = animationDuration
+                                    ),
+                                    enterAnim = if (animateMsg) MsgAnimation.FadeInOut(animationDuration) else MsgAnimation.None
                                 )
                             ),
                         text = "Showcase Layout Compose Demo"
@@ -134,11 +165,17 @@ fun App(openUrl: (String) -> Boolean, onWebLoadFinish: ()-> Unit = {} ) {
                     IconButton(
                         onClick = {}, modifier = Modifier.showcase(
                             2, message = ShowcaseMsg(
-                                text = messageText,
+                                text = "This is the menu button click here to see the menu.",
                                 msgBackground = msgBackground,
                                 roundedCorner = msgCornerRadius.dp,
-                                arrow = Arrow(animSize = animateHead, head = headType, headSize = headSize, curved = true),
-                                enterAnim = if (animateMsg) MsgAnimation.FadeInOut() else MsgAnimation.None
+                                arrow = Arrow(
+                                    animSize = animateHead,
+                                    head = headType,
+                                    headSize = headSize,
+                                    curved = true,
+                                    animationDuration = animationDuration
+                                ),
+                                enterAnim = if (animateMsg) MsgAnimation.FadeInOut(animationDuration) else MsgAnimation.None
                             )
                         )
                     ) {
@@ -151,22 +188,6 @@ fun App(openUrl: (String) -> Boolean, onWebLoadFinish: ()-> Unit = {} ) {
                     verticalArrangement = Arrangement.spacedBy(16.dp)
                 ) {
                     Row(
-                        horizontalArrangement = Arrangement.spacedBy(8.dp),
-                        verticalAlignment = Alignment.CenterVertically
-                    ) {
-                        Text("Messge text", modifier = Modifier.width(100.dp))
-                        OutlinedTextField(modifier = Modifier.showcase(
-                            3, message = ShowcaseMsg(
-                                text = messageText,
-                                msgBackground = msgBackground,
-                                roundedCorner = msgCornerRadius.dp,
-                                arrow = Arrow(animSize = animateHead, head = headType, headSize = headSize),
-                                enterAnim = if (animateMsg) MsgAnimation.FadeInOut() else MsgAnimation.None
-                            )
-                        ), value = messageText, onValueChange = { messageText = it })
-
-                    }
-                    Row(
                         modifier = Modifier,
                         horizontalArrangement = Arrangement.spacedBy(8.dp),
                         verticalAlignment = Alignment.CenterVertically,
@@ -177,12 +198,23 @@ fun App(openUrl: (String) -> Boolean, onWebLoadFinish: ()-> Unit = {} ) {
                             onExpandedChange = { selectTargetMenuExpaned = it }) {
                             OutlinedTextField(
                                 modifier = Modifier.menuAnchor().showcase(
-                                    5, message = ShowcaseMsg(
-                                        text = messageText,
+                                    4, message = ShowcaseMsg(
+                                        text = buildAnnotatedString {
+                                            append("You can choose what target to showcase form here then click the ")
+                                            pushStyle(SpanStyle(fontWeight = FontWeight.Bold))
+                                            append("Showcase!")
+                                            pop()
+                                            append(" button")
+                                        },
                                         msgBackground = msgBackground,
                                         roundedCorner = msgCornerRadius.dp,
-                                        arrow = Arrow(animSize = animateHead, head = headType, headSize = headSize),
-                                        enterAnim = if (animateMsg) MsgAnimation.FadeInOut() else MsgAnimation.None
+                                        arrow = Arrow(
+                                            animSize = animateHead,
+                                            head = headType,
+                                            headSize = headSize,
+                                            animationDuration = animationDuration
+                                        ),
+                                        enterAnim = if (animateMsg) MsgAnimation.FadeInOut(animationDuration) else MsgAnimation.None
                                     )
                                 ),
                                 value = selectedTarget,
@@ -199,7 +231,12 @@ fun App(openUrl: (String) -> Boolean, onWebLoadFinish: ()-> Unit = {} ) {
                             ) {
                                 targets.forEach { (name, index) ->
                                     DropdownMenuItem(
-                                        text = { Text(text = name, style = MaterialTheme.typography.bodyLarge) },
+                                        text = {
+                                            Text(
+                                                text = name,
+                                                style = MaterialTheme.typography.bodyLarge
+                                            )
+                                        },
                                         onClick = {
                                             selectedTarget = name
                                             selectTargetMenuExpaned = false
@@ -242,7 +279,12 @@ fun App(openUrl: (String) -> Boolean, onWebLoadFinish: ()-> Unit = {} ) {
                                 onDismissRequest = { selectHeadMenuExpaned = false }
                             ) {
                                 DropdownMenuItem(
-                                    text = { Text(text = "Triangle", style = MaterialTheme.typography.bodyLarge) },
+                                    text = {
+                                        Text(
+                                            text = "Triangle",
+                                            style = MaterialTheme.typography.bodyLarge
+                                        )
+                                    },
                                     onClick = {
                                         selectedHead = "Triangle"
                                         selectHeadMenuExpaned = false
@@ -257,7 +299,12 @@ fun App(openUrl: (String) -> Boolean, onWebLoadFinish: ()-> Unit = {} ) {
                                     }
                                 )
                                 DropdownMenuItem(
-                                    text = { Text(text = "Circle", style = MaterialTheme.typography.bodyLarge) },
+                                    text = {
+                                        Text(
+                                            text = "Circle",
+                                            style = MaterialTheme.typography.bodyLarge
+                                        )
+                                    },
                                     onClick = {
                                         selectedHead = "Circle"
                                         selectHeadMenuExpaned = false
@@ -272,7 +319,12 @@ fun App(openUrl: (String) -> Boolean, onWebLoadFinish: ()-> Unit = {} ) {
                                     }
                                 )
                                 DropdownMenuItem(
-                                    text = { Text(text = "Square", style = MaterialTheme.typography.bodyLarge) },
+                                    text = {
+                                        Text(
+                                            text = "Square",
+                                            style = MaterialTheme.typography.bodyLarge
+                                        )
+                                    },
                                     onClick = {
                                         selectedHead = "Square"
                                         selectHeadMenuExpaned = false
@@ -309,7 +361,7 @@ fun App(openUrl: (String) -> Boolean, onWebLoadFinish: ()-> Unit = {} ) {
                             }
                         }
                     }
-                    Row {
+                    Row(verticalAlignment = Alignment.CenterVertically) {
                         Text("Line thickness: ")
                         Slider(
                             value = lineThinckness.toFloat(),
@@ -337,7 +389,7 @@ fun App(openUrl: (String) -> Boolean, onWebLoadFinish: ()-> Unit = {} ) {
                             }
                         )
                     }
-                    Row {
+                    Row(verticalAlignment = Alignment.CenterVertically) {
                         Text("Message corner radius: ")
                         Slider(
                             value = msgCornerRadius.toFloat(),
@@ -366,7 +418,7 @@ fun App(openUrl: (String) -> Boolean, onWebLoadFinish: ()-> Unit = {} ) {
                         )
                     }
 
-                    Row {
+                    Row(verticalAlignment = Alignment.CenterVertically) {
                         Text("Head size: ")
                         Slider(
                             value = headSize,
@@ -394,7 +446,38 @@ fun App(openUrl: (String) -> Boolean, onWebLoadFinish: ()-> Unit = {} ) {
                             }
                         )
                     }
-
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        Text("Animation time: ")
+                        Slider(
+                            value = durationSliderValue.toFloat(),
+                            onValueChange = { durationSliderValue = it.roundToInt() },
+                            onValueChangeFinished = {animationDuration = durationSliderValue.div(3)},
+                            steps = 24,
+                            valueRange = 500f..3000f,
+                            thumb = {
+                                Label(
+                                    label = {
+                                        PlainTooltip(
+                                            modifier = Modifier
+                                                .requiredSize(45.dp, 25.dp)
+                                                .wrapContentWidth()
+                                        ) {
+                                            Text("${durationSliderValue}")
+                                        }
+                                    }
+                                ) {
+                                    Text(modifier = Modifier.drawBehind {
+                                        drawRoundRect(
+                                            topLeft = Offset(-10f,0f),
+                                            color = Color.LightGray,
+                                            size = Size(70.dp.toPx(),25.dp.toPx()),
+                                            cornerRadius = CornerRadius(10f,10f)
+                                        )
+                                    }, text = "$durationSliderValue ms")
+                                }
+                            }
+                        )
+                    }
                     Row(
                         Modifier.selectable(
                             selected = animateMsg,
@@ -419,7 +502,12 @@ fun App(openUrl: (String) -> Boolean, onWebLoadFinish: ()-> Unit = {} ) {
                         Button(
                             onClick = {
                                 coroutineScope.launch {
-                                    showGreeting(ShowcaseMsg(messageText, textStyle = TextStyle(color = Color.White)))
+                                    showGreeting(
+                                        ShowcaseMsg(
+                                            "👋Hello this is a greeting \n\nGreeting is what usually is displayed before showcasing, it doesn't target any view but is used to display a message to the user 🧐\n\njust like this one.",
+                                            textStyle = TextStyle(color = Color.White, textAlign = TextAlign.Center)
+                                        )
+                                    )
                                 }
                             }) {
                             Text("Show greeting!")
@@ -427,17 +515,18 @@ fun App(openUrl: (String) -> Boolean, onWebLoadFinish: ()-> Unit = {} ) {
                         Spacer(Modifier.width(8.dp))
                         Button(
                             modifier = Modifier.showcase(
-                                4, message = ShowcaseMsg(
-                                    text = messageText,
+                                3, message = ShowcaseMsg(
+                                    text = "Click here to showcase the target selected above.",
                                     msgBackground = msgBackground,
                                     roundedCorner = msgCornerRadius.dp,
                                     arrow = Arrow(
                                         animSize = animateHead,
                                         head = headType,
                                         targetFrom = Side.Top,
-                                        headSize = headSize
+                                        headSize = headSize,
+                                        animationDuration = animationDuration
                                     ),
-                                    enterAnim = if (animateMsg) MsgAnimation.FadeInOut() else MsgAnimation.None
+                                    enterAnim = if (animateMsg) MsgAnimation.FadeInOut(animationDuration) else MsgAnimation.None
                                 )
                             ),
                             onClick = {
@@ -456,33 +545,38 @@ fun App(openUrl: (String) -> Boolean, onWebLoadFinish: ()-> Unit = {} ) {
                         Text("Subsequent Showcase!")
                     }
                 }
-                Box(){
-                    SnackbarHost(snackbarHostState, modifier = Modifier.align(Alignment.BottomCenter))
-                    Row(Modifier.fillMaxWidth().padding(bottom = 16.dp),
+                Box() {
+                    SnackbarHost(
+                        snackbarHostState,
+                        modifier = Modifier.align(Alignment.BottomCenter)
+                    )
+                    Row(
+                        Modifier.fillMaxWidth().padding(bottom = 16.dp),
                         horizontalArrangement = Arrangement.Center,
-                        verticalAlignment = Alignment.CenterVertically) {
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
                         Text("By Tahaak67")
-                            TextButton(onClick = {
-                                if (!openUrl("https://github.com/tahaak67")){
-                                    clipboardManager.setText(buildAnnotatedString { append("https://github.com/tahaak67") })
-                                    coroutineScope.launch { snackbarHostState.showSnackbar("Link copied") }
-                                }
-                            }) {
-                                Text("Github")
+                        TextButton(onClick = {
+                            if (!openUrl("https://github.com/tahaak67")) {
+                                clipboardManager.setText(buildAnnotatedString { append("https://github.com/tahaak67") })
+                                coroutineScope.launch { snackbarHostState.showSnackbar("Link copied") }
                             }
-                            TextButton(onClick = {
-                                if (!openUrl("https://www.linkedin.com/in/tahabenly/")){
-                                    clipboardManager.setText(buildAnnotatedString { append("https://www.linkedin.com/in/tahabenly/") })
-                                    coroutineScope.launch { snackbarHostState.showSnackbar("Link copied") }
-                                }
-                            }) {
-                                Text("Linkedin")
+                        }) {
+                            Text("Github")
+                        }
+                        TextButton(onClick = {
+                            if (!openUrl("https://www.linkedin.com/in/tahabenly/")) {
+                                clipboardManager.setText(buildAnnotatedString { append("https://www.linkedin.com/in/tahabenly/") })
+                                coroutineScope.launch { snackbarHostState.showSnackbar("Link copied") }
                             }
+                        }) {
+                            Text("Linkedin")
+                        }
                     }
                 }
                 Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.Center) {
                     TextButton(onClick = {
-                        if (!openUrl("https://github.com/tahaak67/ShowcaseLayoutCompose")){
+                        if (!openUrl("https://github.com/tahaak67/ShowcaseLayoutCompose")) {
                             clipboardManager.setText(buildAnnotatedString { append("https://github.com/tahaak67/ShowcaseLayoutCompose") })
                             coroutineScope.launch { snackbarHostState.showSnackbar("Link copied") }
                         }
@@ -490,6 +584,21 @@ fun App(openUrl: (String) -> Boolean, onWebLoadFinish: ()-> Unit = {} ) {
                         Text("Showcase Layout Compose")
                     }
                 }
+            }
+            if (finishedSubsequentShowcase){
+                coroutineScope.launch {
+                    delay(500)
+                    showGreeting(ShowcaseMsg(buildAnnotatedString {
+                        withStyle(ParagraphStyle(textAlign = TextAlign.Center)){
+                            append("That's a lot of useful information!,\n ")
+                            pushStyle(SpanStyle(fontWeight = FontWeight.Bold))
+                            append("i know ")
+                            pop()
+                            append(" i hope you where taking notes 📝 🫠")
+                        }
+                    }, TextStyle(color = Color.White)))
+                }
+                finishedSubsequentShowcase = false
             }
         }
     }
@@ -499,6 +608,6 @@ fun App(openUrl: (String) -> Boolean, onWebLoadFinish: ()-> Unit = {} ) {
 @Composable
 fun AppPreview() {
     MyTheme {
-        App(openUrl = {false})
+        App(openUrl = { false })
     }
 }

@@ -14,6 +14,7 @@ import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
@@ -48,7 +49,6 @@ import androidx.compose.ui.unit.toSize
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.asStateFlow
-import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.launch
 import ly.com.tahaben.showcase_layout_compose.domain.Level
 import ly.com.tahaben.showcase_layout_compose.domain.ShowcaseEventListener
@@ -112,41 +112,35 @@ fun ShowcaseLayout(
     val scope = ShowcaseScopeImpl(greeting)
     scope.content()
 
-    var showCasingItem by remember { mutableStateOf(false) }
     var singleGreetingMsg by remember { mutableStateOf<ShowcaseMsg?>(null) }
-    var isSingleGreeting by remember { mutableStateOf(false) }
-    LaunchedEffect(key1 = isShowcasing) {
-        launch {
-            scope.showcaseActionFlow.collectLatest {
-                if (it != null) {
-                    scope.showcaseEventListener?.onEvent(
-                        Level.DEBUG,
-                        TAG + "showcase single item index: $it"
-                    )
-                    currentIndex = it ?: initIndex
-                    showCasingItem = true
-                } else {
-                    showCasingItem = false
-                    delay(resetDelay)
-                    currentIndex = initIndex
-                }
+    val showcaseItem = scope.showcaseActionFlow.collectAsState()
+    val showCasingItem by remember {
+        derivedStateOf {
+            if (showcaseItem.value != null) {
+                scope.showcaseEventListener?.onEvent(
+                    Level.DEBUG,
+                    TAG + "showcase single item index: ${showcaseItem.value}"
+                )
+                currentIndex = showcaseItem.value ?: initIndex
+                true
+            } else {
+                false
             }
         }
-        launch {
-            scope.greetingActionFlow.collectLatest {
-                if (it != null) {
-                    scope.showcaseEventListener?.onEvent(
-                        Level.DEBUG,
-                        TAG + "showcase single greeting: $it"
-                    )
-                    currentIndex = 0
-                    isSingleGreeting = true
-                } else {
-                    isSingleGreeting = false
-                    delay(resetDelay)
-                    currentIndex = initIndex
-                }
-                singleGreetingMsg = it
+    }
+    val singleGreeting = scope.greetingActionFlow.collectAsState()
+    val isSingleGreeting by remember {
+        derivedStateOf {
+            if (singleGreeting.value != null) {
+                scope.showcaseEventListener?.onEvent(
+                    Level.DEBUG,
+                    TAG + "showcase single greeting: ${singleGreeting.value?.text}"
+                )
+                singleGreetingMsg = singleGreeting.value
+                currentIndex = 0
+                true
+            } else {
+                false
             }
         }
     }
@@ -210,7 +204,7 @@ fun ShowcaseLayout(
                     launch {
                         message?.arrow?.let { arrow ->
                             /** show the arrow if anim is false */
-                            if (!arrow.animSize){
+                            if (!arrow.animSize) {
                                 animArrowHead.snapTo(arrow.headSize)
                             }
                             /** move the arrow */
@@ -222,7 +216,7 @@ fun ShowcaseLayout(
                                 )
                             )
                             /** animate the size of the arrow */
-                            if (arrow.animSize){
+                            if (arrow.animSize) {
                                 animArrowHead.animateTo(
                                     arrow.headSize,
                                     tween(
@@ -281,8 +275,8 @@ fun ShowcaseLayout(
 
                                 /** hide current arrow */
                                 arrowAnimDuration?.let { duration ->
-                                    if (message?.arrow?.animSize == true){
-                                        animArrowHead.animateTo(0f, tween(duration/2))
+                                    if (message?.arrow?.animSize == true) {
+                                        animArrowHead.animateTo(0f, tween(duration / 2))
                                     }
                                     launch {
                                         animArrow.animateTo(0f, tween(duration / 2))
@@ -314,10 +308,14 @@ fun ShowcaseLayout(
                                 }
                                 if (showCasingItem) {
                                     scope.showcaseItemFinished()
+                                    delay(resetDelay)
+                                    currentIndex = initIndex
                                     return@launch
                                 }
                                 if (isSingleGreeting) {
                                     scope.showGreetingFinished()
+                                    delay(resetDelay)
+                                    currentIndex = initIndex
                                     return@launch
                                 }
                                 if (currentIndex + 1 < scope.getHashMapSize()) {
@@ -485,13 +483,14 @@ fun ShowcaseLayout(
                         when (message?.arrow?.head) {
                             Head.CIRCLE -> {
                                 drawCircle(
-                                    center = Offset(x,y),
+                                    center = Offset(x, y),
                                     color = arrowColor,
                                     alpha = animArrow.value,
                                     radius = arrowSize
                                 )
 
                             }
+
                             Head.TRIANGLE -> {
                                 rotate(degrees = degrees, pivot = Offset(x, y)) {
                                     drawPath(
@@ -506,24 +505,27 @@ fun ShowcaseLayout(
                                     )
                                 }
                             }
+
                             Head.SQUARE -> {
                                 drawRect(
-                                    topLeft = Offset(x - arrowSize.div(2),y - arrowSize.div(2)),
+                                    topLeft = Offset(x - arrowSize.div(2), y - arrowSize.div(2)),
                                     color = arrowColor,
                                     alpha = animArrow.value,
-                                    size = Size(arrowSize,arrowSize)
+                                    size = Size(arrowSize, arrowSize)
                                 )
                             }
+
                             Head.ROUND_SQUARE -> {
                                 val radius = arrowSize.div(4)
                                 drawRoundRect(
-                                    topLeft = Offset(x - arrowSize.div(2),y - arrowSize.div(2)),
+                                    topLeft = Offset(x - arrowSize.div(2), y - arrowSize.div(2)),
                                     color = arrowColor,
                                     alpha = animArrow.value,
-                                    size = Size(arrowSize,arrowSize),
-                                    cornerRadius = CornerRadius(radius,radius)
+                                    size = Size(arrowSize, arrowSize),
+                                    cornerRadius = CornerRadius(radius, radius)
                                 )
                             }
+
                             null -> Unit
 
                         }
@@ -717,7 +719,6 @@ class ShowcaseScopeImpl(greeting: ShowcaseMsg?) : ShowcaseScope {
     override fun registerEventListener(eventListener: ShowcaseEventListener) {
         this.showcaseEventListener = eventListener
     }
-
     override suspend fun showcaseItem(index: Int) {
         showcaseEventListener?.onEvent(Level.DEBUG, TAG + "showcase item $index")
         _showcaseActionFlow.emit(index)
@@ -736,7 +737,7 @@ class ShowcaseScopeImpl(greeting: ShowcaseMsg?) : ShowcaseScope {
         )
     }
 
-     suspend fun showGreetingFinished() {
+    suspend fun showGreetingFinished() {
         _greetingActionFlow.emit(null)
         showcaseEventListener?.onEvent(
             Level.DEBUG,
