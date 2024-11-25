@@ -133,6 +133,7 @@ fun App(openUrl: (String) -> Boolean, onWebLoadFinish: () -> Unit = {}) {
             append("lets take you on a quick tour!")
         }
     }
+
     MyTheme(useDarkTheme = false) {
         ShowcaseLayout(
             isShowcasing = isShowcasing,
