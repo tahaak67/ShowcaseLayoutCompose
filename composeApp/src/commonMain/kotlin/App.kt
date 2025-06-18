@@ -23,7 +23,7 @@ import androidx.compose.ui.unit.dp
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import ly.com.tahaben.showcase_layout_compose.model.*
-import ly.com.tahaben.showcase_layout_compose.ui.ShowcaseLayout
+import ly.com.tahaben.showcase_layout_compose.ui.TargetShowcaseLayout
 import org.jetbrains.compose.resources.ExperimentalResourceApi
 import org.jetbrains.compose.resources.painterResource
 import org.jetbrains.compose.ui.tooling.preview.Preview
@@ -88,12 +88,14 @@ fun App(openUrl: (String) -> Boolean, onWebLoadFinish: () -> Unit = {}) {
     }
 
     MyTheme(useDarkTheme = false) {
-        ShowcaseLayout(
+        TargetShowcaseLayout(
             isShowcasing = isShowcasing,
             onFinish = { isShowcasing = false; finishedSubsequentShowcase = true },
             greeting = ShowcaseMsg(greetingMsg, textStyle = TextStyle(color = Color.White)),
             lineThickness = lineThinckness.dp,
-            animationDuration = animationDuration
+            animationDuration = animationDuration,
+//            circleMode = true
+            targetShape = TargetShape.ROUNDED_RECTANGLE
         ) {
             Column(modifier = Modifier.fillMaxSize().verticalScroll(scrollState)) {
                 TopAppBar(title = {

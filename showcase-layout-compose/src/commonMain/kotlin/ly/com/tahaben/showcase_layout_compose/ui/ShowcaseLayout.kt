@@ -659,6 +659,7 @@ fun ShowcaseLayout(
         if (circleMode && isShowcasing) {
             val itemSize = scope.getSizeFor(currentIndex)
             val offset = scope.getPositionFor(currentIndex)
+            val coroutineScope = rememberCoroutineScope()
             val animatedWidth = remember { Animatable(itemSize.width) }
             val animatedHeight = remember { Animatable(itemSize.height) }
 
@@ -670,6 +671,9 @@ fun ShowcaseLayout(
 
             val outerAnimatable = remember { Animatable(0.6f) }
             val outerAlphaAnimatable = remember(currentIndex) { Animatable(0f) }
+
+            // Animation for message text opacity to create smooth transitions
+            val messageTextAlpha = remember { Animatable(1f) }
 
             LaunchedEffect(currentIndex) {
                 outerAnimatable.snapTo(0.6f)
@@ -732,22 +736,92 @@ fun ShowcaseLayout(
                     delay(pulseDuration+200L)
                 }
             }
+            // Animation for message text - fade out when changing targets
+            /*LaunchedEffect(currentIndex) {
+                // If not the first showcase, fade out the message text
+                if (currentIndex > 1 && currentIndex != initIndex) {
+                    messageTextAlpha.animateTo(
+                        0f,
+                        animationSpec = tween(
+                            durationMillis = animationDuration / 3,
+                            easing = FastOutSlowInEasing
+                        )
+                    )
+                    //messageTextAlpha.snapTo(0f)
+                }
+            }*/
+
             LaunchedEffect(currentIndex) {
-                animatedX.snapTo(offset.x)
-                animatedY.snapTo(offset.y)
-                animatedHeight.snapTo(0f)
-                animatedWidth.snapTo(0f)
-                /*launch {
-                    animatedX.animateTo(offset.x)
-                }
-                launch {
-                    animatedY.animateTo(offset.y)
-                }*/
-                launch {
-                    animatedHeight.animateTo(itemSize.height)
-                }
-                launch {
-                    animatedWidth.animateTo(itemSize.width)
+                // Get the previous position and size for smooth transition
+                val prevX = animatedX.value
+                val prevY = animatedY.value
+                val prevWidth = animatedWidth.value
+                val prevHeight = animatedHeight.value
+
+                // If this is the first showcase or we're resetting, snap to initial values
+                if (currentIndex == 1 || currentIndex == initIndex) {
+                    animatedX.snapTo(offset.x)
+                    animatedY.snapTo(offset.y)
+                    animatedHeight.snapTo(0f)
+                    animatedWidth.snapTo(0f)
+
+                    launch {
+                        animatedHeight.animateTo(itemSize.height)
+                    }
+                    launch {
+                        animatedWidth.animateTo(itemSize.width)
+                    }
+                } else {
+                    // For transitions between targets, animate smoothly
+                    messageTextAlpha.snapTo(0f)
+                    launch {
+                        animatedX.animateTo(
+                            offset.x,
+                            animationSpec = tween(
+                                durationMillis = animationDuration,
+                                easing = FastOutSlowInEasing
+                            )
+                        )
+                    }
+                    launch {
+                        animatedY.animateTo(
+                            offset.y,
+                            animationSpec = tween(
+                                durationMillis = animationDuration,
+                                easing = FastOutSlowInEasing
+                            )
+                        )
+                    }
+                    launch {
+                        animatedHeight.animateTo(
+                            itemSize.height,
+                            animationSpec = tween(
+                                durationMillis = animationDuration,
+                                easing = FastOutSlowInEasing
+                            )
+                        )
+                    }
+                    launch {
+                        animatedWidth.animateTo(
+                            itemSize.width,
+                            animationSpec = tween(
+                                durationMillis = animationDuration,
+                                easing = FastOutSlowInEasing
+                            )
+                        )
+                    }
+
+                    // After the circle has moved to its new position, fade the message text back in
+                    launch {
+                        delay(animationDuration.toLong() * 2)
+                        messageTextAlpha.animateTo(
+                            1f,
+                            animationSpec = tween(
+                                durationMillis = animationDuration,
+                                easing = FastOutSlowInEasing
+                            )
+                        )
+                    }
                 }
             }
             LaunchedEffect(isShowcasing){
@@ -770,7 +844,16 @@ fun ShowcaseLayout(
                                 TAG + "tapped here $it"
                             )
                             if (currentIndex + 1 < scope.getHashMapSize()) {
+                                coroutineScope.launch {
+                                    messageTextAlpha.animateTo(
+                                        0f,
+                                        animationSpec = tween(
+                                            durationMillis = animationDuration / 3,
+                                            easing = FastOutSlowInEasing
+                                        )
+                                    )
                                 currentIndex++
+                                }
                             } else {
                                 currentIndex = initIndex
                                 onFinish()
@@ -1112,25 +1195,31 @@ fun ShowcaseLayout(
                         )
                     }
 
+                    // Apply the message text alpha to both the background and text
+                    val backgroundAlpha = messageTextAlpha.value
+
                     if (msg.roundedCorner == 0.dp) {
                         drawRect(
-                            color = msg.msgBackground ?: Color.Black.copy(alpha = 0.7f),
+                            color = msg.msgBackground ?: Color.Black,
                             topLeft = Offset(bgRect.left, bgRect.top),
-                            size = Size(bgRect.width, bgRect.height)
+                            size = Size(bgRect.width, bgRect.height),
+                            alpha = backgroundAlpha
                         )
                     } else {
                         drawRoundRect(
-                            color = msg.msgBackground ?: Color.Black.copy(alpha = 0.7f),
+                            color = msg.msgBackground ?: Color.Black,
                             topLeft = Offset(bgRect.left, bgRect.top),
                             size = Size(bgRect.width, bgRect.height),
-                            cornerRadius = CornerRadius(msg.roundedCorner.value)
+                            cornerRadius = CornerRadius(msg.roundedCorner.value),
+                            alpha = backgroundAlpha
                         )
                     }
 
-                    // Draw the text
+                    // Draw the text with the animated alpha
                     drawText(
                         textResult,
-                        topLeft = Offset(textX, textY)
+                        topLeft = Offset(textX, textY),
+                        alpha = messageTextAlpha.value
                     )
                 }
             }
