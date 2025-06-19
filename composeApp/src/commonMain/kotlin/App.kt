@@ -22,6 +22,8 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
+import ly.com.tahaben.showcase_layout_compose.domain.Level
+import ly.com.tahaben.showcase_layout_compose.domain.ShowcaseEventListener
 import ly.com.tahaben.showcase_layout_compose.model.*
 import ly.com.tahaben.showcase_layout_compose.ui.TargetShowcaseLayout
 import org.jetbrains.compose.resources.ExperimentalResourceApi
@@ -95,7 +97,7 @@ fun App(openUrl: (String) -> Boolean, onWebLoadFinish: () -> Unit = {}) {
             lineThickness = lineThinckness.dp,
             animationDuration = animationDuration,
 //            circleMode = true
-            targetShape = TargetShape.ROUNDED_RECTANGLE
+            targetShape = TargetShape.CIRCLE
         ) {
             Column(modifier = Modifier.fillMaxSize().verticalScroll(scrollState)) {
                 TopAppBar(title = {
@@ -557,6 +559,11 @@ fun App(openUrl: (String) -> Boolean, onWebLoadFinish: () -> Unit = {}) {
                 }
                 finishedSubsequentShowcase = false
             }
+            registerEventListener(object: ShowcaseEventListener {
+                override fun onEvent(level: Level, event: String) {
+                    println("$level: $event")
+                }
+            })
         }
     }
 }

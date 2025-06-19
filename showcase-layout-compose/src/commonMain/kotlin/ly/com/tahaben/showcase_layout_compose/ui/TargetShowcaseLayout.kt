@@ -88,8 +88,24 @@ fun TargetShowcaseLayout(
             }
         }
     }
+    val singleGreeting = scope.greetingActionFlow.collectAsState()
+    val isSingleGreeting by remember {
+        derivedStateOf {
+            if (singleGreeting.value != null) {
+                scope.showcaseEventListener?.onEvent(
+                    Level.DEBUG,
+                    TAG + "showcase single greeting: ${singleGreeting.value?.text}"
+                )
+                singleGreetingMsg = singleGreeting.value
+                currentIndex = 0
+                true
+            } else {
+                false
+            }
+        }
+    }
     BoxWithConstraints(modifier = Modifier.fillMaxSize()) {
-        if (isShowcasing) {
+        if (isShowcasing || showCasingItem || isSingleGreeting) {
             val itemSize = scope.getSizeFor(currentIndex)
             val offset = scope.getPositionFor(currentIndex)
             val coroutineScope = rememberCoroutineScope()
@@ -106,10 +122,10 @@ fun TargetShowcaseLayout(
             val outerAlphaAnimatable = remember(currentIndex) { Animatable(0f) }
 
             // Animation for message text opacity to create smooth transitions
-            val messageTextAlpha = remember { Animatable(1f) }
+            val messageTextAlpha = remember { Animatable(0f) }
 
             // Animation for overall canvas alpha to make the circle completely disappear
-            val canvasAlpha = remember { Animatable(1f) }
+            val canvasAlpha = remember { Animatable(0f) }
 
             LaunchedEffect(currentIndex) {
                 outerAnimatable.snapTo(0.6f)
@@ -193,9 +209,12 @@ fun TargetShowcaseLayout(
                 val prevY = animatedY.value
                 val prevWidth = animatedWidth.value
                 val prevHeight = animatedHeight.value
-
+                if(currentIndex == 0 || isSingleGreeting){
+                    //canvasAlpha.snapTo(0f)
+                    canvasAlpha.animateTo(1f, animationSpec = tween(durationMillis = animationDuration / 2, easing = FastOutSlowInEasing))
+                }
                 // If this is the first showcase or we're resetting, snap to initial values
-                if (currentIndex == 1 || currentIndex == initIndex) {
+                if (currentIndex == 0 || currentIndex == initIndex) {
                     animatedX.snapTo(offset.x)
                     animatedY.snapTo(offset.y)
                     animatedHeight.snapTo(0f)
@@ -207,7 +226,16 @@ fun TargetShowcaseLayout(
                     launch {
                         animatedWidth.animateTo(itemSize.width)
                     }
-                } else if(currentIndex == scope.getHashMapSize()){
+                    delay(animationDuration.toLong())
+                    messageTextAlpha.animateTo(
+                        1f,
+                        animationSpec = tween(
+                            durationMillis = animationDuration / 2,
+                            easing = FastOutSlowInEasing
+                        )
+                    )
+                }
+                else if(currentIndex == scope.getHashMapSize()){
                     // last index
                     messageTextAlpha.animateTo(0f, animationSpec = tween(durationMillis = animationDuration / 2, easing = FastOutSlowInEasing))
                     canvasAlpha.animateTo(0f)
@@ -351,13 +379,12 @@ fun TargetShowcaseLayout(
                 }
             }
             LaunchedEffect(isShowcasing){
-                if (isShowcasing && currentIndex == 0){
-                    currentIndex = 1
+                if (isShowcasing && currentIndex != 0 && !isSingleGreeting){
                     pulseAlpha.snapTo(0.6f)
                     pulseRadius.snapTo(0f)
                 }
             }
-            val message = scope.getMessageFor(currentIndex)
+            val message = if(isSingleGreeting) singleGreetingMsg else scope.getMessageFor(currentIndex)
             val textMeasurer = rememberTextMeasurer()
 
             Canvas(
@@ -369,7 +396,72 @@ fun TargetShowcaseLayout(
                                 Level.VERBOSE,
                                 TAG + "tapped here $it"
                             )
-                            if (currentIndex + 1 < scope.getHashMapSize()) {
+                            if (showCasingItem) {
+                                coroutineScope.launch {
+                                    // Fade out the message text
+                                    messageTextAlpha.animateTo(
+                                        0f,
+                                        animationSpec = tween(
+                                            durationMillis = animationDuration / 3,
+                                            easing = FastOutSlowInEasing
+                                        )
+                                    )
+
+                                    // Fade out the entire canvas to make the circle completely disappear
+                                    launch {
+                                        canvasAlpha.animateTo(
+                                            0f,
+                                            animationSpec = tween(
+                                                durationMillis = animationDuration / 3,
+                                                easing = FastOutSlowInEasing
+                                            )
+                                        )
+                                    }
+
+                                    // Wait for animations to complete
+                                    delay((animationDuration / 3).toLong())
+
+                                    // Finish showcasing the single item
+                                    scope.showcaseItemFinished()
+
+                                    currentIndex = initIndex
+                                    println("Showcase index reset to $currentIndex")
+                                }
+                                return@detectTapGestures
+                            }
+                            else if (isSingleGreeting) {
+                                coroutineScope.launch {
+                                    // Fade out the message text
+                                    messageTextAlpha.animateTo(
+                                        0f,
+                                        animationSpec = tween(
+                                            durationMillis = animationDuration / 3,
+                                            easing = FastOutSlowInEasing
+                                        )
+                                    )
+
+                                    // Fade out the entire canvas to make the circle completely disappear
+                                    launch {
+                                        canvasAlpha.animateTo(
+                                            0f,
+                                            animationSpec = tween(
+                                                durationMillis = animationDuration / 3,
+                                                easing = FastOutSlowInEasing
+                                            )
+                                        )
+                                    }
+
+                                    // Wait for animations to complete
+                                    delay((animationDuration / 3).toLong())
+
+                                    // Finish showcasing the greeting
+                                    scope.showGreetingFinished()
+
+                                    currentIndex = initIndex
+                                }
+                                return@detectTapGestures
+                            }
+                            else if (currentIndex + 1 < scope.getHashMapSize()) {
                                 if (!animateToNextTarget){
                                     // Shrink at current location, then move to new location, then expand
                                     // Step 1: Shrink at current location
@@ -535,6 +627,67 @@ fun TargetShowcaseLayout(
                         }
                     }
             ) {
+                if (isSingleGreeting || currentIndex == 0){
+                    // For greeting, fill the entire screen with a solid color
+                    drawRect(
+                        color = if (isDarkLayout) Color.White.copy(alpha = 0.9f) else Color.Black.copy(alpha = 0.9f),
+                        size = size,
+                        alpha = canvasAlpha.value
+                    )
+
+                    // Display the greeting message in the middle of the screen
+                    message?.let { msg ->
+                        // Measure text with appropriate constraints to ensure it wraps if needed
+                        val maxTextWidth = max(1, (size.width * 0.8f).toInt()) // Use 80% of screen width
+                        val textResult = textMeasurer.measure(
+                            msg.text,
+                            style = msg.textStyle,
+                            overflow = TextOverflow.Visible,
+                            constraints = Constraints(0, maxTextWidth)
+                        )
+
+                        // Center the text on the screen
+                        val textX = (size.width - textResult.size.width) / 2
+                        val textY = (size.height - textResult.size.height) / 2
+
+                        // Draw a background for the text with padding
+                        val bgPadding = 40f
+                        val bgRect = Rect(
+                            left = textX - bgPadding,
+                            top = textY - bgPadding,
+                            right = textX + textResult.size.width + bgPadding,
+                            bottom = textY + textResult.size.height + bgPadding
+                        )
+
+                        // Draw the text background
+                        if (msg.roundedCorner == 0.dp) {
+                            drawRect(
+                                color = msg.msgBackground ?: Color.Transparent,
+                                topLeft = Offset(bgRect.left, bgRect.top),
+                                size = Size(bgRect.width, bgRect.height),
+                                alpha = messageTextAlpha.value
+                            )
+                        } else {
+                            drawRoundRect(
+                                color = msg.msgBackground ?: Color.Transparent,
+                                topLeft = Offset(bgRect.left, bgRect.top),
+                                size = Size(bgRect.width, bgRect.height),
+                                cornerRadius = CornerRadius(msg.roundedCorner.value),
+                                alpha = messageTextAlpha.value
+                            )
+                        }
+
+                        // Draw the text
+                        drawText(
+                            textResult,
+                            topLeft = Offset(textX, textY),
+                            alpha = messageTextAlpha.value
+                        )
+                    }
+
+                    // Return early to avoid drawing the target shape
+                    return@Canvas
+                }
                 // Calculate the radius for the target shape
                 // For a circle, this is the actual radius
                 // For a rectangle, we'll use the actual width and height
@@ -801,7 +954,7 @@ fun TargetShowcaseLayout(
                     style = Fill // Fill the donut shape
                 )
 
-                // Draw the pulsing ring (outside the hole)
+                // Draw the pulsing ring (outside the punch)
                 val pulsePath = Path().apply {
                     op(
                         Path().apply {
