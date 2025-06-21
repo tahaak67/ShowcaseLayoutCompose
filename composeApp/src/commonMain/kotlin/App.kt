@@ -72,7 +72,7 @@ fun App(openUrl: (String) -> Boolean, onWebLoadFinish: () -> Unit = {}) {
     var isShowcasing by remember { mutableStateOf(false) }
     var animateHead by remember { mutableStateOf(false) }
     var animateMsg by remember { mutableStateOf(false) }
-    val msgBackground by remember { mutableStateOf(Color.White) }
+    val msgBackground by remember { mutableStateOf(Color.Yellow) }
     var msgCornerRadius by remember { mutableStateOf(0) }
     var headSize by remember { mutableStateOf(25f) }
     var lineThinckness by remember { mutableStateOf(5) }
@@ -97,7 +97,8 @@ fun App(openUrl: (String) -> Boolean, onWebLoadFinish: () -> Unit = {}) {
             lineThickness = lineThinckness.dp,
             animationDuration = animationDuration,
 //            circleMode = true
-            targetShape = TargetShape.CIRCLE
+            targetShape = TargetShape.CIRCLE,
+            animateToNextTarget = false
         ) {
             Column(modifier = Modifier.fillMaxSize().verticalScroll(scrollState)) {
                 TopAppBar(title = {

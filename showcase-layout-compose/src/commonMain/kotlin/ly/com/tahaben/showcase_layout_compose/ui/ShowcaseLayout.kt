@@ -74,6 +74,8 @@ private const val INDEX_RESET_DELAY = 250L
  * @param onFinish what happens when all items are showcased.
  * @param greeting greeting message to be shown before showcasing the first composable, leave [initIndex] at 0 if you want to use this.
  * @param lineThickness thickness of the arrow line in dp.
+ * @param targetShape the shape of the target highlight (RECTANGLE, CIRCLE, or ROUNDED_RECTANGLE).
+ * @param cornerRadius the corner radius for the ROUNDED_RECTANGLE shape in dp.
  **/
 
 @Composable
@@ -86,6 +88,7 @@ fun ShowcaseLayout(
     greeting: ShowcaseMsg? = null,
     lineThickness: Dp = 5.dp,
     targetShape: TargetShape = TargetShape.RECTANGLE,
+    cornerRadius: Dp = 16.dp,
     content: @Composable ShowcaseScope.() -> Unit
 ) {
     var currentIndex by remember {
@@ -333,198 +336,172 @@ fun ShowcaseLayout(
                 onDraw = {
 
                     /** make transparent background path around the target composable */
-                    val showcasePath = Path().apply {
-                        lineTo(size.width, 0f)
-                        lineTo(size.width, size.height)
-                        lineTo(offset.x + itemSize.width, size.height)
-                        lineTo(offset.x + itemSize.width, 0f)
-                        moveTo(offset.x + itemSize.width, offset.y + itemSize.height)
-                        lineTo(offset.x + itemSize.width, size.height)
-                        lineTo(0f, size.height)
-                        lineTo(0f, offset.y + itemSize.height)
-                        close()
-                        moveTo(0f, 0f)
-                        lineTo(offset.x, 0f)
-                        lineTo(offset.x, offset.y + itemSize.height)
-                        lineTo(0f, offset.y + itemSize.height)
-                        close()
-                        moveTo(offset.x, 0f)
-                        lineTo(offset.x + itemSize.width, 0f)
-                        lineTo(offset.x + itemSize.width, offset.y)
-                        lineTo(offset.x, offset.y)
-                        close()
-                    }
-                    /** draw the showcasePath */
-                    drawPath(
-                        path = showcasePath,
-                        color = if (isDarkLayout) Color.White else Color.Black,
-                        alpha = 0.80f,
-                    )
-                    val hasArrowHead = message?.arrow?.head != null
-                    val arrowHeadMargin = (message?.arrow?.headSize ?: Arrow().headSize) + 25
-
-                    if (currentIndex > 0 && shouldDrawArrow) {
-                        /** draw arrow line */
-                        val arrowPath = Path().apply {
-                            if (message?.arrow?.curved == true) {
-                                moveTo(
-                                    (maxWidth / 2).toPx(),
-                                    offset.y + itemSize.height + 200
-                                )
-                                val xPoint =
-                                    if ((offset.x + itemSize.width + 80) > size.width) {
-                                        offset.x - 80
-                                    } else {
-                                        (offset.x + itemSize.width + 50)
-                                    }
-                                quadraticBezierTo(
-                                    (size.width / 2),
-                                    offset.y + itemSize.height + 0,
-                                    xPoint,
-                                    offset.y + (itemSize.height / 2)
-                                )
-                            } else {
-                                when (message?.arrow?.targetFrom) {
-                                    Side.Top -> {
-                                        moveTo(
-                                            offset.x + (itemSize.width / 2),
-                                            offset.y - 200
-                                        )
-                                        lineTo(
-                                            offset.x + (itemSize.width / 2),
-                                            if (hasArrowHead) offset.y - arrowHeadMargin else offset.y
-                                        )
-                                    }
-
-                                    Side.Bottom -> {
-                                        moveTo(
-                                            offset.x + (itemSize.width / 2),
-                                            offset.y + (itemSize.height + 250)
-                                        )
-                                        lineTo(
-                                            offset.x + (itemSize.width / 2),
-                                            if (hasArrowHead) offset.y + itemSize.height + arrowHeadMargin else offset.y + itemSize.height
-                                        )
-                                    }
-
-                                    Side.Left -> {
-                                        moveTo(
-                                            offset.x - 200,
-                                            offset.y + (itemSize.height / 2)
-                                        )
-                                        lineTo(
-                                            if (hasArrowHead) offset.x - arrowHeadMargin else offset.x,
-                                            offset.y + (itemSize.height / 2)
-                                        )
-                                    }
-
-                                    Side.Right -> {
-                                        moveTo(
-                                            offset.x + (itemSize.width + 200),
-                                            offset.y + (itemSize.height / 2)
-                                        )
-                                        lineTo(
-                                            if (hasArrowHead) offset.x + itemSize.width + arrowHeadMargin else offset.x + itemSize.width,
-                                            offset.y + (itemSize.height / 2)
-                                        )
-                                    }
-
-                                    null -> Unit
+                    if (currentIndex == 0 || isSingleGreeting) {
+                        // Draw a full canvas without any cutout for greeting or index 0
+                        drawRect(
+                            color = if (isDarkLayout) Color.White else Color.Black,
+                            alpha = 0.80f,
+                            size = size
+                        )
+                    } else {
+                        when (targetShape) {
+                            TargetShape.RECTANGLE -> {
+                                // Create a rectangular path around the target
+                                val showcasePath = Path().apply {
+                                    lineTo(size.width, 0f)
+                                    lineTo(size.width, size.height)
+                                    lineTo(offset.x + itemSize.width, size.height)
+                                    lineTo(offset.x + itemSize.width, 0f)
+                                    moveTo(offset.x + itemSize.width, offset.y + itemSize.height)
+                                    lineTo(offset.x + itemSize.width, size.height)
+                                    lineTo(0f, size.height)
+                                    lineTo(0f, offset.y + itemSize.height)
+                                    close()
+                                    moveTo(0f, 0f)
+                                    lineTo(offset.x, 0f)
+                                    lineTo(offset.x, offset.y + itemSize.height)
+                                    lineTo(0f, offset.y + itemSize.height)
+                                    close()
+                                    moveTo(offset.x, 0f)
+                                    lineTo(offset.x + itemSize.width, 0f)
+                                    lineTo(offset.x + itemSize.width, offset.y)
+                                    lineTo(offset.x, offset.y)
+                                    close()
                                 }
-                            }
-                        }
-
-                        val outPath = Path()
-                        val pos = FloatArray(2)
-                        val tan = FloatArray(2)
-                        PathMeasure().apply {
-                            setPath(arrowPath, false)
-                            getSegment(0f, pathPortion.value * length, outPath, true)
-                            getPosition(pathPortion.value * length).apply {
-                                pos[0] = x
-                                pos[1] = y
-                            }
-                            getTangent(pathPortion.value * length).apply {
-                                tan[0] = x
-                                tan[1] = y
-                            }
-                            scope.showcaseEventListener?.onEvent(
-                                Level.VERBOSE,
-                                TAG + "pos:${pos} tan:${tan}"
-                            )
-                        }
-                        drawPath(
-                            path = outPath,
-                            color = arrowColor,
-                            style = Stroke(width = lineThickness.toPx(), cap = StrokeCap.Round)
-                        )
-
-                        /** draw the arrow head (and rotate if needed) */
-                        val arrowSize = animArrowHead.value
-                        val x = pos[0]
-                        val y = pos[1]
-                        val degrees = -atan2(tan[0], tan[1]) * (180f / PI.toFloat()) - 180f
-                        scope.showcaseEventListener?.onEvent(
-                            Level.VERBOSE,
-                            TAG + "max canvas: x:${size.width} y:${size.height}"
-                        )
-                        when (message?.arrow?.head) {
-                            Head.CIRCLE -> {
-                                drawCircle(
-                                    center = Offset(x, y),
-                                    color = arrowColor,
-                                    alpha = animArrow.value,
-                                    radius = arrowSize
+                                /** draw the showcasePath */
+                                drawPath(
+                                    path = showcasePath,
+                                    color = if (isDarkLayout) Color.White else Color.Black,
+                                    alpha = 0.80f,
                                 )
-
                             }
+                            TargetShape.CIRCLE -> {
+                                // Calculate the center and radius of the circle
+                                val centerX = offset.x + itemSize.width / 2
+                                val centerY = offset.y + itemSize.height / 2
+                                val radius = maxOf(itemSize.width, itemSize.height) / 2
 
-                            Head.TRIANGLE -> {
-                                rotate(degrees = degrees, pivot = Offset(x, y)) {
-                                    drawPath(
-                                        path = Path().apply {
-                                            moveTo(x, y - arrowSize)
-                                            lineTo(x - arrowSize, y + arrowSize)
-                                            lineTo(x + arrowSize, y + arrowSize)
-                                            close()
-                                        },
-                                        color = arrowColor,
-                                        alpha = animArrow.value
+                                // Create paths for the outer and inner areas
+                                val outerPath = Path().apply {
+                                    // Draw a rectangle covering the entire canvas
+                                    addRect(Rect(0f, 0f, size.width, size.height))
+                                }
+
+                                // Create a path for the target area (circle)
+                                val targetPath = Path().apply {
+                                    addOval(Rect(
+                                        centerX - radius,
+                                        centerY - radius,
+                                        centerX + radius,
+                                        centerY + radius
+                                    ))
+                                }
+
+                                // Create a combined path with a hole
+                                val showcasePath = Path().apply {
+                                    addPath(outerPath)
+                                    op(outerPath, targetPath, androidx.compose.ui.graphics.PathOperation.Difference)
+                                }
+
+                                // Draw the path
+                                drawPath(
+                                    path = showcasePath,
+                                    color = if (isDarkLayout) Color.White else Color.Black,
+                                    alpha = 0.80f,
+                                )
+                            }
+                            TargetShape.ROUNDED_RECTANGLE -> {
+                                // Create paths for the outer and inner areas
+                                val outerPath = Path().apply {
+                                    // Draw a rectangle covering the entire canvas
+                                    addRect(Rect(0f, 0f, size.width, size.height))
+                                }
+
+                                // Create a path for the target area (rounded rectangle)
+                                val targetPath = Path().apply {
+                                    // Top-left corner
+                                    moveTo(offset.x + cornerRadius.toPx(), offset.y)
+
+                                    // Top edge and top-right corner
+                                    lineTo(offset.x + itemSize.width - cornerRadius.toPx(), offset.y)
+                                    arcTo(
+                                        rect = Rect(
+                                            offset.x + itemSize.width - 2 * cornerRadius.toPx(),
+                                            offset.y,
+                                            offset.x + itemSize.width,
+                                            offset.y + 2 * cornerRadius.toPx()
+                                        ),
+                                        startAngleDegrees = 270f,
+                                        sweepAngleDegrees = 90f,
+                                        forceMoveTo = false
                                     )
+
+                                    // Right edge and bottom-right corner
+                                    lineTo(offset.x + itemSize.width, offset.y + itemSize.height - cornerRadius.toPx())
+                                    arcTo(
+                                        rect = Rect(
+                                            offset.x + itemSize.width - 2 * cornerRadius.toPx(),
+                                            offset.y + itemSize.height - 2 * cornerRadius.toPx(),
+                                            offset.x + itemSize.width,
+                                            offset.y + itemSize.height
+                                        ),
+                                        startAngleDegrees = 0f,
+                                        sweepAngleDegrees = 90f,
+                                        forceMoveTo = false
+                                    )
+
+                                    // Bottom edge and bottom-left corner
+                                    lineTo(offset.x + cornerRadius.toPx(), offset.y + itemSize.height)
+                                    arcTo(
+                                        rect = Rect(
+                                            offset.x,
+                                            offset.y + itemSize.height - 2 * cornerRadius.toPx(),
+                                            offset.x + 2 * cornerRadius.toPx(),
+                                            offset.y + itemSize.height
+                                        ),
+                                        startAngleDegrees = 90f,
+                                        sweepAngleDegrees = 90f,
+                                        forceMoveTo = false
+                                    )
+
+                                    // Left edge and top-left corner
+                                    lineTo(offset.x, offset.y + cornerRadius.toPx())
+                                    arcTo(
+                                        rect = Rect(
+                                            offset.x,
+                                            offset.y,
+                                            offset.x + 2 * cornerRadius.toPx(),
+                                            offset.y + 2 * cornerRadius.toPx()
+                                        ),
+                                        startAngleDegrees = 180f,
+                                        sweepAngleDegrees = 90f,
+                                        forceMoveTo = false
+                                    )
+
+                                    close()
                                 }
-                            }
 
-                            Head.SQUARE -> {
-                                drawRect(
-                                    topLeft = Offset(
-                                        x - arrowSize.div(2),
-                                        y - arrowSize.div(2)
-                                    ),
-                                    color = arrowColor,
-                                    alpha = animArrow.value,
-                                    size = Size(arrowSize, arrowSize)
+                                // Create a combined path with a hole
+                                val showcasePath = Path().apply {
+                                    addPath(outerPath)
+                                    op(outerPath, targetPath, androidx.compose.ui.graphics.PathOperation.Difference)
+                                }
+
+                                // Draw the path
+                                drawPath(
+                                    path = showcasePath,
+                                    color = if (isDarkLayout) Color.White else Color.Black,
+                                    alpha = 0.80f,
                                 )
                             }
-
-                            Head.ROUND_SQUARE -> {
-                                val radius = arrowSize.div(4)
-                                drawRoundRect(
-                                    topLeft = Offset(
-                                        x - arrowSize.div(2),
-                                        y - arrowSize.div(2)
-                                    ),
-                                    color = arrowColor,
-                                    alpha = animArrow.value,
-                                    size = Size(arrowSize, arrowSize),
-                                    cornerRadius = CornerRadius(radius, radius)
-                                )
-                            }
-
-                            null -> Unit
-
                         }
-
                     }
+
+                    // Calculate the center and radius of the circle for target
+                    val centerX = offset.x + itemSize.width / 2
+                    val centerY = offset.y + itemSize.height / 2
+                    val radius = maxOf(itemSize.width, itemSize.height) / 2
+
                     message?.let { msg ->
                         /**
                         Create a measurer for the message with limited constraints and a 'Visible'
@@ -543,24 +520,38 @@ fun ShowcaseLayout(
                             if (currentIndex == 0) (size.height / 2) else with(density) {
                                 val currentItemYPosition = scope.getPositionFor(currentIndex).y
                                 val currentItemHeight = scope.getSizeFor(currentIndex).height
+
+                                // Calculate additional offset for circle shape
+                                val additionalOffset = if (targetShape == TargetShape.CIRCLE) {
+                                    // Use the radius of the circle as additional offset
+                                    val currentItemWidth = scope.getSizeFor(currentIndex).width
+                                    val radius = maxOf(currentItemWidth, currentItemHeight) / 2
+                                    // Add some extra margin (50px) to ensure enough space for the arrow
+                                    radius + 50
+                                } else {
+                                    0f
+                                }
+
+                                val baseOffset = 230 + additionalOffset
+
                                 when (msg.gravity) {
                                     Gravity.Top -> {
-                                        currentItemYPosition - 230
+                                        currentItemYPosition - baseOffset
                                     }
 
                                     Gravity.Bottom -> {
-                                        currentItemYPosition + currentItemHeight + 230
+                                        currentItemYPosition + currentItemHeight + baseOffset
                                     }
 
                                     Gravity.Auto -> {
                                         val topPosition =
-                                            currentItemYPosition - 230
+                                            currentItemYPosition - baseOffset
                                         if (topPosition < 0) {
                                             scope.showcaseEventListener?.onEvent(
                                                 Level.INFO,
                                                 TAG + "index: $currentIndex Not enough space on top show msg on bottom"
                                             )
-                                            currentItemYPosition + currentItemHeight + 230
+                                            currentItemYPosition + currentItemHeight + baseOffset
                                         } else {
                                             scope.showcaseEventListener?.onEvent(
                                                 Level.INFO,
@@ -585,6 +576,18 @@ fun ShowcaseLayout(
                         } else {
                             val currentItemXPosition = scope.getPositionFor(currentIndex).x
                             val currentItemWidth = scope.getSizeFor(currentIndex).width
+                            val currentItemHeight = scope.getSizeFor(currentIndex).height
+
+                            // Calculate additional horizontal offset for circle shape
+                            val additionalHorizontalOffset = if (targetShape == TargetShape.CIRCLE) {
+                                // Use the radius of the circle as additional offset
+                                val radius = maxOf(currentItemWidth, currentItemHeight) / 2
+                                // Add some extra margin to ensure enough space for the arrow
+                                radius * 0.3f // 30% of radius as extra margin
+                            } else {
+                                0f
+                            }
+
                             val currentItemXMiddlePoint =
                                 currentItemXPosition + (currentItemWidth / 2)
                             when {
@@ -596,7 +599,12 @@ fun ShowcaseLayout(
                                     if ((currentItemXMiddlePoint - messageWidthHalf) < 0) {
                                         currentItemXPosition
                                     } else {
-                                        currentItemXMiddlePoint - messageWidthHalf
+                                        // For left side, move message further left
+                                        if (msg.arrow?.targetFrom == Side.Right && targetShape == TargetShape.CIRCLE) {
+                                            currentItemXMiddlePoint - messageWidthHalf - additionalHorizontalOffset
+                                        } else {
+                                            currentItemXMiddlePoint - messageWidthHalf
+                                        }
                                     }
                                 }
 
@@ -616,7 +624,12 @@ fun ShowcaseLayout(
                                     if (currentItemXMiddlePoint + messageWidthHalf > size.width) {
                                         currentItemXPosition + currentItemWidth - textResult.size.width
                                     } else {
-                                        currentItemXMiddlePoint - messageWidthHalf
+                                        // For right side, move message further right
+                                        if (msg.arrow?.targetFrom == Side.Left && targetShape == TargetShape.CIRCLE) {
+                                            currentItemXMiddlePoint - messageWidthHalf + additionalHorizontalOffset
+                                        } else {
+                                            currentItemXMiddlePoint - messageWidthHalf
+                                        }
                                     }
                                 }
                             }
@@ -628,6 +641,8 @@ fun ShowcaseLayout(
                             textResult.size.width + 36,
                             textResult.size.height + 36
                         ).toSize()
+
+                        // Draw the message card
                         if (msg.roundedCorner == 0.dp) {
                             drawRect(
                                 msg.msgBackground ?: Color.Transparent,
@@ -644,6 +659,253 @@ fun ShowcaseLayout(
                                 alpha = animMsgAlpha.value
                             )
                         }
+
+                        // Draw the arrow if needed
+                        val hasArrowHead = msg.arrow?.head != null
+                        val arrowHeadMargin = (msg.arrow?.headSize ?: Arrow().headSize) + 25
+
+                        if (currentIndex > 0 && shouldDrawArrow) {
+                            /** draw arrow line */
+                            val arrowPath = Path().apply {
+                                if (msg.arrow?.curved == true) {
+                                    // Calculate card center
+                                    val cardCenterX = cardOffset.x + cardSize.width / 2
+                                    val cardCenterY = cardOffset.y + cardSize.height / 2
+
+                                    // Start from the message card based on targetFrom direction
+                                    when (msg.arrow?.targetFrom) {
+                                        Side.Top -> {
+                                            // Start from bottom center of the message card
+                                            moveTo(
+                                                cardCenterX,
+                                                cardOffset.y + cardSize.height
+                                            )
+                                        }
+                                        Side.Bottom -> {
+                                            // Start from top center of the message card
+                                            moveTo(
+                                                cardCenterX,
+                                                cardOffset.y
+                                            )
+                                        }
+                                        Side.Left -> {
+                                            // Start from right center of the message card
+                                            moveTo(
+                                                cardOffset.x + cardSize.width,
+                                                cardCenterY
+                                            )
+                                        }
+                                        Side.Right -> {
+                                            // Start from left center of the message card
+                                            moveTo(
+                                                cardOffset.x,
+                                                cardCenterY
+                                            )
+                                        }
+                                        else -> {
+                                            // Default to bottom center if targetFrom is not specified
+                                            moveTo(
+                                                cardCenterX,
+                                                cardOffset.y + cardSize.height
+                                            )
+                                        }
+                                    }
+
+                                    val xPoint =
+                                        if ((offset.x + itemSize.width + 80) > size.width) {
+                                            offset.x - 80
+                                        } else {
+                                            (offset.x + itemSize.width + 50)
+                                        }
+                                    quadraticBezierTo(
+                                        (size.width / 2),
+                                        offset.y + itemSize.height + 0,
+                                        xPoint,
+                                        offset.y + (itemSize.height / 2)
+                                    )
+                                } else {
+                                    // Calculate card center
+                                    val cardCenterX = cardOffset.x + cardSize.width / 2
+                                    val cardCenterY = cardOffset.y + cardSize.height / 2
+
+                                    when (msg.arrow?.targetFrom) {
+                                        Side.Top -> {
+                                            // Start from bottom center of the message card
+                                            moveTo(
+                                                cardCenterX,
+                                                cardOffset.y + cardSize.height
+                                            )
+                                            if (targetShape == TargetShape.CIRCLE) {
+                                                // For circle, point to the top edge of the circle
+                                                lineTo(
+                                                    centerX,
+                                                    if (hasArrowHead) centerY - radius - arrowHeadMargin else centerY - radius
+                                                )
+                                            } else {
+                                                lineTo(
+                                                    offset.x + (itemSize.width / 2),
+                                                    if (hasArrowHead) offset.y - arrowHeadMargin else offset.y
+                                                )
+                                            }
+                                        }
+
+                                        Side.Bottom -> {
+                                            // Start from top center of the message card
+                                            moveTo(
+                                                cardCenterX,
+                                                cardOffset.y
+                                            )
+                                            if (targetShape == TargetShape.CIRCLE) {
+                                                // For circle, point to the bottom edge of the circle
+                                                lineTo(
+                                                    centerX,
+                                                    if (hasArrowHead) centerY + radius + arrowHeadMargin else centerY + radius
+                                                )
+                                            } else {
+                                                lineTo(
+                                                    offset.x + (itemSize.width / 2),
+                                                    if (hasArrowHead) offset.y + itemSize.height + arrowHeadMargin else offset.y + itemSize.height
+                                                )
+                                            }
+                                        }
+
+                                        Side.Left -> {
+                                            // Start from right center of the message card
+                                            moveTo(
+                                                cardOffset.x + cardSize.width,
+                                                cardCenterY
+                                            )
+                                            if (targetShape == TargetShape.CIRCLE) {
+                                                // For circle, point to the left edge of the circle
+                                                lineTo(
+                                                    if (hasArrowHead) centerX - radius - arrowHeadMargin else centerX - radius,
+                                                    centerY
+                                                )
+                                            } else {
+                                                lineTo(
+                                                    if (hasArrowHead) offset.x - arrowHeadMargin else offset.x,
+                                                    offset.y + (itemSize.height / 2)
+                                                )
+                                            }
+                                        }
+
+                                        Side.Right -> {
+                                            // Start from left center of the message card
+                                            moveTo(
+                                                cardOffset.x,
+                                                cardCenterY
+                                            )
+                                            if (targetShape == TargetShape.CIRCLE) {
+                                                // For circle, point to the right edge of the circle
+                                                lineTo(
+                                                    if (hasArrowHead) centerX + radius + arrowHeadMargin else centerX + radius,
+                                                    centerY
+                                                )
+                                            } else {
+                                                lineTo(
+                                                    if (hasArrowHead) offset.x + itemSize.width + arrowHeadMargin else offset.x + itemSize.width,
+                                                    offset.y + (itemSize.height / 2)
+                                                )
+                                            }
+                                        }
+
+                                        null -> Unit
+                                    }
+                                }
+                            }
+
+                            val outPath = Path()
+                            val pos = FloatArray(2)
+                            val tan = FloatArray(2)
+                            PathMeasure().apply {
+                                setPath(arrowPath, false)
+                                getSegment(0f, pathPortion.value * length, outPath, true)
+                                getPosition(pathPortion.value * length).apply {
+                                    pos[0] = x
+                                    pos[1] = y
+                                }
+                                getTangent(pathPortion.value * length).apply {
+                                    tan[0] = x
+                                    tan[1] = y
+                                }
+                                scope.showcaseEventListener?.onEvent(
+                                    Level.VERBOSE,
+                                    TAG + "pos:${pos} tan:${tan}"
+                                )
+                            }
+                            drawPath(
+                                path = outPath,
+                                color = arrowColor,
+                                style = Stroke(width = lineThickness.toPx(), cap = StrokeCap.Round)
+                            )
+
+                            /** draw the arrow head (and rotate if needed) */
+                            val arrowSize = animArrowHead.value
+                            val x = pos[0]
+                            val y = pos[1]
+                            val degrees = -atan2(tan[0], tan[1]) * (180f / PI.toFloat()) - 180f
+                            scope.showcaseEventListener?.onEvent(
+                                Level.VERBOSE,
+                                TAG + "max canvas: x:${size.width} y:${size.height}"
+                            )
+                            when (msg.arrow?.head) {
+                                Head.CIRCLE -> {
+                                    drawCircle(
+                                        center = Offset(x, y),
+                                        color = arrowColor,
+                                        alpha = animArrow.value,
+                                        radius = arrowSize
+                                    )
+
+                                }
+
+                                Head.TRIANGLE -> {
+                                    rotate(degrees = degrees, pivot = Offset(x, y)) {
+                                        drawPath(
+                                            path = Path().apply {
+                                                moveTo(x, y - arrowSize)
+                                                lineTo(x - arrowSize, y + arrowSize)
+                                                lineTo(x + arrowSize, y + arrowSize)
+                                                close()
+                                            },
+                                            color = arrowColor,
+                                            alpha = animArrow.value
+                                        )
+                                    }
+                                }
+
+                                Head.SQUARE -> {
+                                    drawRect(
+                                        topLeft = Offset(
+                                            x - arrowSize.div(2),
+                                            y - arrowSize.div(2)
+                                        ),
+                                        color = arrowColor,
+                                        alpha = animArrow.value,
+                                        size = Size(arrowSize, arrowSize)
+                                    )
+                                }
+
+                                Head.ROUND_SQUARE -> {
+                                    val radius = arrowSize.div(4)
+                                    drawRoundRect(
+                                        topLeft = Offset(
+                                            x - arrowSize.div(2),
+                                            y - arrowSize.div(2)
+                                        ),
+                                        color = arrowColor,
+                                        alpha = animArrow.value,
+                                        size = Size(arrowSize, arrowSize),
+                                        cornerRadius = CornerRadius(radius, radius)
+                                    )
+                                }
+
+                                null -> Unit
+
+                            }
+                        }
+
+                        // Draw the message text
                         drawText(
                             textResult,
                             topLeft = textOffset,
