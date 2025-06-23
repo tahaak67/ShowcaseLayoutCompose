@@ -409,9 +409,6 @@ For an example of the new TargetShowcaseLayout, check out the [App.kt](https://g
 You can also clone/download this repository and run the demo app to see both layouts in action.
 
 
-| Comparison of both layouts |
-|:-------:|
-| [Add your comparison screenshot path here] |
 
 ## Contributing
 
