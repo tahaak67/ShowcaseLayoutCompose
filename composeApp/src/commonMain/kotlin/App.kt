@@ -1,3 +1,7 @@
+import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.Crossfade
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
@@ -25,7 +29,6 @@ import kotlinx.coroutines.launch
 import ly.com.tahaben.showcase_layout_compose.domain.Level
 import ly.com.tahaben.showcase_layout_compose.domain.ShowcaseEventListener
 import ly.com.tahaben.showcase_layout_compose.model.*
-import ly.com.tahaben.showcase_layout_compose.ui.TargetShowcaseLayout
 import org.jetbrains.compose.resources.ExperimentalResourceApi
 import org.jetbrains.compose.resources.painterResource
 import org.jetbrains.compose.ui.tooling.preview.Preview
@@ -41,9 +44,12 @@ fun App(openUrl: (String) -> Boolean, onWebLoadFinish: () -> Unit = {}) {
     var selectedTarget by remember { mutableStateOf("Toolbar title") }
     var selectTargetMenuExpaned by remember { mutableStateOf(false) }
     var selectHeadMenuExpaned by remember { mutableStateOf(false) }
+    var selectTargetShapeMenuExpaned by remember { mutableStateOf(false) }
     val clipboardManager = LocalClipboardManager.current
     val snackbarHostState = remember { SnackbarHostState() }
     var finishedSubsequentShowcase by remember { mutableStateOf(false) }
+    // State to track which layout is currently selected (ShowcaseLayout or TargetShowcaseLayout)
+    var useTargetShowcaseLayout by remember { mutableStateOf(false) }
     val targets =
         mapOf(
             "Toolbar title" to 1,
@@ -57,6 +63,13 @@ fun App(openUrl: (String) -> Boolean, onWebLoadFinish: () -> Unit = {}) {
             "Circle" to Res.drawable.circle,
             "Square" to Res.drawable.square,
             "Rounded Square" to Res.drawable.rounded_square
+        )
+    val targetShapeMap =
+        mapOf(
+            "Triangle" to Res.drawable.triangle,
+            "Circle" to Res.drawable.circle,
+            "Rectangle" to Res.drawable.square,
+            "Rounded Rectangle" to Res.drawable.rounded_square
         )
     var selectedHead by remember { mutableStateOf("Triangle") }
     val headType by derivedStateOf {
@@ -78,6 +91,15 @@ fun App(openUrl: (String) -> Boolean, onWebLoadFinish: () -> Unit = {}) {
     var lineThinckness by remember { mutableStateOf(5) }
     var durationSliderValue by remember { mutableStateOf(500) }
     var animationDuration by remember { mutableStateOf(500) }
+    var animateToNextTarget by remember { mutableStateOf(true) }
+    var targetShape by remember { mutableStateOf(TargetShape.CIRCLE) }
+    val targetShapeName by derivedStateOf {
+        when(targetShape){
+            TargetShape.CIRCLE -> "Circle"
+            TargetShape.RECTANGLE -> "Rectangle"
+            TargetShape.ROUNDED_RECTANGLE -> "Rounded Rectangle"
+        }
+    }
     val scrollState = rememberScrollState()
     val greetingMsg = buildAnnotatedString {
         withStyle(ParagraphStyle(textAlign = TextAlign.Center)){
@@ -90,15 +112,15 @@ fun App(openUrl: (String) -> Boolean, onWebLoadFinish: () -> Unit = {}) {
     }
 
     MyTheme(useDarkTheme = false) {
-        TargetShowcaseLayout(
+        ShowcaseLayoutWrapper(
+            useTargetShowcaseLayout = useTargetShowcaseLayout,
             isShowcasing = isShowcasing,
             onFinish = { isShowcasing = false; finishedSubsequentShowcase = true },
             greeting = ShowcaseMsg(greetingMsg, textStyle = TextStyle(color = Color.White)),
             lineThickness = lineThinckness.dp,
             animationDuration = animationDuration,
-//            circleMode = true
-            targetShape = TargetShape.CIRCLE,
-            animateToNextTarget = false
+            targetShape = targetShape,
+            animateToNextTarget = animateToNextTarget
         ) {
             Column(modifier = Modifier.fillMaxSize().verticalScroll(scrollState)) {
                 TopAppBar(title = {
@@ -107,7 +129,7 @@ fun App(openUrl: (String) -> Boolean, onWebLoadFinish: () -> Unit = {}) {
                             .showcase(
                                 1, message = ShowcaseMsg(
                                     text = "This is the title of the toolbar 🤫",
-                                    msgBackground = msgBackground,
+                                    msgBackground = Color(0xffb7ffb3),
                                     roundedCorner = msgCornerRadius.dp,
                                     arrow = Arrow(
                                         animSize = animateHead,
@@ -125,7 +147,7 @@ fun App(openUrl: (String) -> Boolean, onWebLoadFinish: () -> Unit = {}) {
                         onClick = {}, modifier = Modifier.showcase(
                             2, message = ShowcaseMsg(
                                 text = "This is the menu button click here to see the menu.",
-                                msgBackground = msgBackground,
+                                msgBackground = Color(0xff0042fd),
                                 roundedCorner = msgCornerRadius.dp,
                                 arrow = Arrow(
                                     animSize = animateHead,
@@ -134,6 +156,7 @@ fun App(openUrl: (String) -> Boolean, onWebLoadFinish: () -> Unit = {}) {
                                     curved = true,
                                     animationDuration = animationDuration
                                 ),
+                                textStyle = TextStyle(color = Color.White, fontWeight = FontWeight.Bold),
                                 enterAnim = if (animateMsg) MsgAnimation.FadeInOut(animationDuration) else MsgAnimation.None
                             )
                         )
@@ -147,6 +170,25 @@ fun App(openUrl: (String) -> Boolean, onWebLoadFinish: () -> Unit = {}) {
                     verticalArrangement = Arrangement.spacedBy(16.dp)
                 ) {
                     Row(
+                        modifier = Modifier.showcase(
+                            5, message = ShowcaseMsg(
+                                text = "Switch between full screen showcase and target showcase from here, Try it now ;)",
+                                msgBackground = Color(0xff000000),
+                                textStyle = TextStyle(color = Color.White, fontWeight = FontWeight.Bold),
+                            )
+                        ),
+                        horizontalArrangement = Arrangement.spacedBy(8.dp),
+                        verticalAlignment = Alignment.CenterVertically,
+                    ) {
+                        Text("Layout Type", modifier = Modifier.width(100.dp))
+                        Switch(
+                            checked = useTargetShowcaseLayout,
+                            onCheckedChange = { useTargetShowcaseLayout = it }
+                        )
+                        Text(if (useTargetShowcaseLayout) "Target Showcase Layout" else "Showcase Layout")
+                    }
+
+                    Row(
                         modifier = Modifier,
                         horizontalArrangement = Arrangement.spacedBy(8.dp),
                         verticalAlignment = Alignment.CenterVertically,
@@ -156,7 +198,7 @@ fun App(openUrl: (String) -> Boolean, onWebLoadFinish: () -> Unit = {}) {
                             expanded = selectTargetMenuExpaned,
                             onExpandedChange = { selectTargetMenuExpaned = it }) {
                             OutlinedTextField(
-                                modifier = Modifier.menuAnchor().showcase(
+                                modifier = Modifier.menuAnchor(type = MenuAnchorType.PrimaryNotEditable).showcase(
                                     4, message = ShowcaseMsg(
                                         text = buildAnnotatedString {
                                             append("You can choose what target to showcase form here then click the ")
@@ -165,7 +207,7 @@ fun App(openUrl: (String) -> Boolean, onWebLoadFinish: () -> Unit = {}) {
                                             pop()
                                             append(" button")
                                         },
-                                        msgBackground = msgBackground,
+                                        msgBackground = Color(0xff450099),
                                         roundedCorner = msgCornerRadius.dp,
                                         arrow = Arrow(
                                             animSize = animateHead,
@@ -173,6 +215,7 @@ fun App(openUrl: (String) -> Boolean, onWebLoadFinish: () -> Unit = {}) {
                                             headSize = headSize,
                                             animationDuration = animationDuration
                                         ),
+                                        textStyle = TextStyle(color = Color.White, fontWeight = FontWeight.Bold),
                                         enterAnim = if (animateMsg) MsgAnimation.FadeInOut(animationDuration) else MsgAnimation.None
                                     )
                                 ),
@@ -216,7 +259,7 @@ fun App(openUrl: (String) -> Boolean, onWebLoadFinish: () -> Unit = {}) {
                             expanded = selectHeadMenuExpaned,
                             onExpandedChange = { selectHeadMenuExpaned = it }) {
                             OutlinedTextField(
-                                modifier = Modifier.menuAnchor(),
+                                modifier = Modifier.menuAnchor(type = MenuAnchorType.PrimaryNotEditable),
                                 value = selectedHead,
                                 onValueChange = {},
                                 readOnly = true,
@@ -232,8 +275,6 @@ fun App(openUrl: (String) -> Boolean, onWebLoadFinish: () -> Unit = {}) {
                                 colors = ExposedDropdownMenuDefaults.textFieldColors(),
                             )
                             ExposedDropdownMenu(
-                                //modifier = Modifier.exposedDropdownSize(),
-                                //properties = PopupProperties(focusable = false),
                                 expanded = selectHeadMenuExpaned,
                                 onDismissRequest = { selectHeadMenuExpaned = false }
                             ) {
@@ -320,142 +361,267 @@ fun App(openUrl: (String) -> Boolean, onWebLoadFinish: () -> Unit = {}) {
                             }
                         }
                     }
-                    Row(verticalAlignment = Alignment.CenterVertically) {
-                        Text("Line thickness: ")
-                        Slider(
-                            value = lineThinckness.toFloat(),
-                            onValueChange = { lineThinckness = it.toInt() },
-                            valueRange = 1f..10f,
-                            thumb = {
-                                Label(
-                                    label = {
-                                        PlainTooltip(
-                                            modifier = Modifier
-                                                .requiredSize(45.dp, 25.dp)
-                                                .wrapContentWidth()
-                                        ) {
-                                            Text("${lineThinckness}dp")
-                                        }
-                                    }
-                                ) {
-                                    Text(modifier = Modifier.drawBehind {
-                                        drawCircle(
-                                            color = Color.LightGray,
-                                            radius = 20.dp.toPx()
-                                        )
-                                    }, text = "${lineThinckness}dp")
-                                }
-                            }
-                        )
-                    }
-                    Row(verticalAlignment = Alignment.CenterVertically) {
-                        Text("Message corner radius: ")
-                        Slider(
-                            value = msgCornerRadius.toFloat(),
-                            onValueChange = { msgCornerRadius = it.toInt() },
-                            valueRange = 0f..45f,
-                            thumb = {
-                                Label(
-                                    label = {
-                                        PlainTooltip(
-                                            modifier = Modifier
-                                                .requiredSize(45.dp, 25.dp)
-                                                .wrapContentWidth()
-                                        ) {
-                                            Text("${msgCornerRadius}dp")
-                                        }
-                                    }
-                                ) {
-                                    Text(modifier = Modifier.drawBehind {
-                                        drawCircle(
-                                            color = Color.LightGray,
-                                            radius = 20.dp.toPx()
-                                        )
-                                    }, text = "${msgCornerRadius}dp")
-                                }
-                            }
-                        )
-                    }
-
-                    Row(verticalAlignment = Alignment.CenterVertically) {
-                        Text("Head size: ")
-                        Slider(
-                            value = headSize,
-                            onValueChange = { headSize = it },
-                            valueRange = 10f..45f,
-                            thumb = {
-                                Label(
-                                    label = {
-                                        PlainTooltip(
-                                            modifier = Modifier
-                                                .requiredSize(45.dp, 25.dp)
-                                                .wrapContentWidth()
-                                        ) {
-                                            Text("${headSize}")
-                                        }
-                                    }
-                                ) {
-                                    Text(modifier = Modifier.drawBehind {
-                                        drawCircle(
-                                            color = Color.LightGray,
-                                            radius = 20.dp.toPx()
-                                        )
-                                    }, text = headSize.roundToInt().toString())
-                                }
-                            }
-                        )
-                    }
-                    Row(verticalAlignment = Alignment.CenterVertically) {
-                        Text("Animation time: ")
-                        Slider(
-                            value = durationSliderValue.toFloat(),
-                            onValueChange = { durationSliderValue = it.roundToInt() },
-                            onValueChangeFinished = {animationDuration = durationSliderValue.div(3)},
-                            steps = 24,
-                            valueRange = 500f..3000f,
-                            thumb = {
-                                Label(
-                                    label = {
-                                        PlainTooltip(
-                                            modifier = Modifier
-                                                .requiredSize(45.dp, 25.dp)
-                                                .wrapContentWidth()
-                                        ) {
-                                            Text("${durationSliderValue}")
-                                        }
-                                    }
-                                ) {
-                                    Text(modifier = Modifier.drawBehind {
-                                        drawRoundRect(
-                                            topLeft = Offset(-10f,0f),
-                                            color = Color.LightGray,
-                                            size = Size(70.dp.toPx(),25.dp.toPx()),
-                                            cornerRadius = CornerRadius(10f,10f)
-                                        )
-                                    }, text = "$durationSliderValue ms")
-                                }
-                            }
-                        )
-                    }
                     Row(
-                        Modifier.selectable(
-                            selected = animateMsg,
-                            onClick = { animateMsg = !animateMsg },
-                            role = Role.RadioButton
-                        ), verticalAlignment = Alignment.CenterVertically
+                        horizontalArrangement = Arrangement.spacedBy(8.dp),
+                        verticalAlignment = Alignment.CenterVertically
                     ) {
-                        Text("Animate msg")
-                        Checkbox(checked = animateMsg, onCheckedChange = { animateMsg = it })
+                        Text("Target shape", modifier = Modifier.width(100.dp))
+                        ExposedDropdownMenuBox(
+                            expanded = selectTargetShapeMenuExpaned,
+                            onExpandedChange = { selectTargetShapeMenuExpaned = it }) {
+                            OutlinedTextField(
+                                modifier = Modifier.menuAnchor(MenuAnchorType.PrimaryNotEditable, true),
+                                value = targetShapeName,
+                                onValueChange = {},
+                                readOnly = true,
+                                singleLine = true,
+                                label = { },
+                                trailingIcon = {
+                                    Image(
+                                        modifier = Modifier.size(18.dp),
+                                        painter = painterResource(targetShapeMap[targetShapeName]!!),
+                                        contentDescription = null
+                                    )
+                                },
+                                colors = ExposedDropdownMenuDefaults.textFieldColors(),
+                            )
+                            ExposedDropdownMenu(
+                                expanded = selectTargetShapeMenuExpaned,
+                                onDismissRequest = { selectTargetShapeMenuExpaned = false }
+                            ) {
+                                DropdownMenuItem(
+                                    text = {
+                                        Text(
+                                            text = "Circle",
+                                            style = MaterialTheme.typography.bodyLarge
+                                        )
+                                    },
+                                    onClick = {
+                                        targetShape = TargetShape.CIRCLE
+                                        selectTargetShapeMenuExpaned = false
+                                    },
+                                    contentPadding = ExposedDropdownMenuDefaults.ItemContentPadding,
+                                    trailingIcon = {
+                                        Image(
+                                            modifier = Modifier.size(18.dp),
+                                            painter = painterResource(Res.drawable.circle),
+                                            contentDescription = null
+                                        )
+                                    }
+                                )
+                                DropdownMenuItem(
+                                    text = {
+                                        Text(
+                                            text = "Rectangle",
+                                            style = MaterialTheme.typography.bodyLarge
+                                        )
+                                    },
+                                    onClick = {
+                                        targetShape = TargetShape.RECTANGLE
+                                        selectTargetShapeMenuExpaned = false
+                                    },
+                                    contentPadding = ExposedDropdownMenuDefaults.ItemContentPadding,
+                                    trailingIcon = {
+                                        Image(
+                                            modifier = Modifier.size(18.dp),
+                                            painter = painterResource(Res.drawable.square),
+                                            contentDescription = null
+                                        )
+                                    }
+                                )
+                                DropdownMenuItem(
+                                    text = {
+                                        Text(
+                                            text = "Rounded Rectangle",
+                                            style = MaterialTheme.typography.bodyLarge
+                                        )
+                                    },
+                                    onClick = {
+                                        targetShape = TargetShape.ROUNDED_RECTANGLE
+                                        selectTargetShapeMenuExpaned = false
+                                    },
+                                    contentPadding = ExposedDropdownMenuDefaults.ItemContentPadding,
+                                    trailingIcon = {
+                                        Image(
+                                            modifier = Modifier.size(18.dp),
+                                            painter = painterResource(Res.drawable.rounded_square),
+                                            contentDescription = null
+                                        )
+                                    }
+                                )
+                            }
+                        }
                     }
-                    Row(
-                        Modifier.selectable(
-                            selected = animateHead,
-                            onClick = { animateHead = !animateHead },
-                            role = Role.RadioButton
-                        ), verticalAlignment = Alignment.CenterVertically
-                    ) {
-                        Text("Animate arrow head")
-                        Checkbox(checked = animateHead, onCheckedChange = { animateHead = it })
+                    AnimatedVisibility(!isShowcasing, enter = fadeIn(), exit = fadeOut()) {
+                        Column{
+                            AnimatedVisibility(visible = !useTargetShowcaseLayout, enter = fadeIn(), exit = fadeOut()) {
+                                Column {
+                                    Row(verticalAlignment = Alignment.CenterVertically) {
+                                        Text("Line thickness: ")
+                                        Slider(
+                                            value = lineThinckness.toFloat(),
+                                            onValueChange = { lineThinckness = it.toInt() },
+                                            valueRange = 1f..10f,
+                                            thumb = {
+                                                Label(
+                                                    label = {
+                                                        PlainTooltip(
+                                                            modifier = Modifier
+                                                                .requiredSize(45.dp, 25.dp)
+                                                                .wrapContentWidth()
+                                                        ) {
+                                                            Text("${lineThinckness}dp")
+                                                        }
+                                                    }
+                                                ) {
+                                                    Text(modifier = Modifier.drawBehind {
+                                                        drawCircle(
+                                                            color = Color.LightGray,
+                                                            radius = 20.dp.toPx()
+                                                        )
+                                                    }, text = "${lineThinckness}dp")
+                                                }
+                                            }
+                                        )
+                                    }
+                                    Row(verticalAlignment = Alignment.CenterVertically) {
+                                        Text("Message corner radius: ")
+                                        Slider(
+                                            value = msgCornerRadius.toFloat(),
+                                            onValueChange = { msgCornerRadius = it.toInt() },
+                                            valueRange = 0f..45f,
+                                            thumb = {
+                                                Label(
+                                                    label = {
+                                                        PlainTooltip(
+                                                            modifier = Modifier
+                                                                .requiredSize(45.dp, 25.dp)
+                                                                .wrapContentWidth()
+                                                        ) {
+                                                            Text("${msgCornerRadius}dp")
+                                                        }
+                                                    }
+                                                ) {
+                                                    Text(modifier = Modifier.drawBehind {
+                                                        drawCircle(
+                                                            color = Color.LightGray,
+                                                            radius = 20.dp.toPx()
+                                                        )
+                                                    }, text = "${msgCornerRadius}dp")
+                                                }
+                                            }
+                                        )
+                                    }
+                                    Row(verticalAlignment = Alignment.CenterVertically) {
+                                        Text("Head size: ")
+                                        Slider(
+                                            value = headSize,
+                                            onValueChange = { headSize = it },
+                                            valueRange = 10f..45f,
+                                            thumb = {
+                                                Label(
+                                                    label = {
+                                                        PlainTooltip(
+                                                            modifier = Modifier
+                                                                .requiredSize(45.dp, 25.dp)
+                                                                .wrapContentWidth()
+                                                        ) {
+                                                            Text("${headSize}")
+                                                        }
+                                                    }
+                                                ) {
+                                                    Text(modifier = Modifier.drawBehind {
+                                                        drawCircle(
+                                                            color = Color.LightGray,
+                                                            radius = 20.dp.toPx()
+                                                        )
+                                                    }, text = headSize.roundToInt().toString())
+                                                }
+                                            }
+                                        )
+                                    }
+                                }
+                            }
+                            Row(verticalAlignment = Alignment.CenterVertically) {
+                                Text("Animation time: ")
+                                Slider(
+                                    value = durationSliderValue.toFloat(),
+                                    onValueChange = { durationSliderValue = it.roundToInt() },
+                                    onValueChangeFinished = {animationDuration = durationSliderValue.div(3)},
+                                    steps = 24,
+                                    valueRange = 500f..3000f,
+                                    thumb = {
+                                        Label(
+                                            label = {
+                                                PlainTooltip(
+                                                    modifier = Modifier
+                                                        .requiredSize(45.dp, 25.dp)
+                                                        .wrapContentWidth()
+                                                ) {
+                                                    Text("${durationSliderValue}")
+                                                }
+                                            }
+                                        ) {
+                                            Text(modifier = Modifier.drawBehind {
+                                                drawRoundRect(
+                                                    topLeft = Offset(-10f,0f),
+                                                    color = Color.LightGray,
+                                                    size = Size(70.dp.toPx(),25.dp.toPx()),
+                                                    cornerRadius = CornerRadius(10f,10f)
+                                                )
+                                            }, text = "$durationSliderValue ms")
+                                        }
+                                    }
+                                )
+                            }
+                            Row(
+                                Modifier.selectable(
+                                    selected = animateMsg,
+                                    onClick = { animateMsg = !animateMsg },
+                                    role = Role.RadioButton
+                                ), verticalAlignment = Alignment.CenterVertically
+                            ) {
+                                Text("Animate msg")
+                                Checkbox(checked = animateMsg, onCheckedChange = { animateMsg = it })
+                            }
+                            Crossfade (useTargetShowcaseLayout) {
+                                if (it){
+                                    Row(
+                                        modifier = Modifier.selectable(
+                                            selected = animateToNextTarget,
+                                            onClick = { animateToNextTarget = !animateToNextTarget },
+                                            role = Role.Checkbox
+                                        ),
+                                        verticalAlignment = Alignment.CenterVertically,
+                                    ) {
+                                        Text("Animate to next target")
+                                        Checkbox(
+                                            checked = animateToNextTarget,
+                                            onCheckedChange = { animateToNextTarget = it }
+                                        )
+                                    }
+                                }else{
+                                    Row(
+                                        Modifier.selectable(
+                                            selected = animateHead,
+                                            onClick = { if (!useTargetShowcaseLayout) animateHead = !animateHead },
+                                            role = Role.RadioButton,
+                                            enabled = !useTargetShowcaseLayout
+                                        ), verticalAlignment = Alignment.CenterVertically
+                                    ) {
+                                        Text(
+                                            "Animate arrow head",
+                                            color = if (useTargetShowcaseLayout) Color.Gray else Color.Unspecified
+                                        )
+                                        Checkbox(
+                                            checked = animateHead,
+                                            onCheckedChange = { if (!useTargetShowcaseLayout) animateHead = it },
+                                            enabled = !useTargetShowcaseLayout
+                                        )
+                                    }
+                                }
+                            }
+                        }
                     }
                     Row {
                         Button(

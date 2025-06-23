@@ -11,16 +11,21 @@
 
 # Showcase Layout Compose
 
-Create a beautiful animated showcase effect for your compose UIs easily !
+Create beautiful animated showcase effects for your compose UIs easily!
 
-**Now with multiplatform support :D**
+**Now with multiplatform support and two different showcase layouts to choose from:**
+- **ShowcaseLayout**: Classic full-screen overlay with cutouts
+- **TargetShowcaseLayout**: Modern targeted highlighting with customizable shapes
 
 ## Web demo
 [Click here](https://tahaak67.github.io/ShowcaseLayoutCompose/index.html) to try showcase layout for web in your browser!
 
 ## Demo
 
-<img src="metadata/gif/slc-light.gif" alt="Library demo GIF" width="300" />
+|                               ShowcaseLayout                                |
+|:---------------------------------------------------------------------------:|
+| <img src="metadata/gif/slc-light.gif" alt="Library demo GIF" width="300" /> |
+
 
 <img src="metadata/screenshots/screenshot-13.png" alt="Library demo GIF" width="300" />.<img src="metadata/screenshots/screenshot-14.png" alt="Library demo GIF" width="300" />
 
@@ -76,7 +81,10 @@ Text(
     modifier = Modifier.showcase(
         // should start with 1 and increment with 1 for each time you use Modifier.showcase()
         index = 1,
-        message =
+        message = ShowcaseMsg(
+            "This is a showcase message",
+            textStyle = TextStyle(color = Color.White)
+        )
     ),
     text = "ShowcaseLayout Test 1"
 )
@@ -125,7 +133,96 @@ similarly you can show a greeting using <code>showGreeting</code> and passing th
 </details>
 
 
-Done, our text is now showcased!, customize it further with Additional parameters
+Done, our text is now showcased!, customize it further with Additional parameters.
+
+## TargetShowcaseLayout (New!)
+
+Starting from version 1.0.6, Showcase Layout Compose now offers a new layout option: `TargetShowcaseLayout`. This layout provides a different visual approach to showcasing UI elements by highlighting specific targets with customizable shapes rather than the full-screen approach of the original ShowcaseLayout.
+
+### Key Features
+
+- Highlights target elements with customizable shapes (circle, rectangle, or rounded rectangle)
+- Smooth animations between targets
+- Pulsing effect around the target for better visibility
+- All the same customization options as the original ShowcaseLayout
+
+### Usage
+
+You can use TargetShowcaseLayout directly:
+
+```kotlin
+var isShowcasing by remember { mutableStateOf(true) }
+
+TargetShowcaseLayout(
+    isShowcasing = isShowcasing,
+    onFinish = { isShowcasing = false },
+    targetShape = TargetShape.ROUNDED_RECTANGLE, // CIRCLE, RECTANGLE, or ROUNDED_RECTANGLE
+    cornerRadius = 8.dp, // Only used with ROUNDED_RECTANGLE
+    animateToNextTarget = true, // Smooth animation between targets
+    greeting = ShowcaseMsg(
+        "Welcome to TargetShowcaseLayout!",
+        textStyle = TextStyle(color = Color.White)
+    )
+) {
+    // Your UI content here
+    Column {
+        Text(
+            modifier = Modifier.showcase(
+                index = 1,
+                message = ShowcaseMsg(
+                    "This element is highlighted with TargetShowcaseLayout",
+                    textStyle = TextStyle(color = Color.White)
+                )
+            ),
+            text = "Target Showcase Example"
+        )
+    }
+}
+```
+
+|                              TargetShowcaseLayout with CIRCLE shape                              |                          TargetShowcaseLayout with RECTANGLE shape                           |                           TargetShowcaseLayout with ROUNDED_RECTANGLE shape                            |
+|:------------------------------------------------------------------------------------------------:|:--------------------------------------------------------------------------------------------:|:------------------------------------------------------------------------------------------------------:|
+| ![screenshot-targetshocase-circle.png](metadata/screenshots/screenshot-targetshocase-circle.png) | ![screenshot-targetshocase-rect.png](metadata/screenshots/screenshot-targetshocase-rect.png) | ![screenshot-targetshocase-roundrect.png](metadata/screenshots/screenshot-targetshocase-roundrect.png) |
+
+### TargetShowcaseLayout vs ShowcaseLayout
+
+| Feature | TargetShowcaseLayout | ShowcaseLayout |
+|---------|---------------------|----------------|
+| Visual style | Highlights specific targets with shapes | Full-screen overlay with cutouts |
+| Target shapes | Circle, Rectangle, Rounded Rectangle | Circle, Rectangle, Rounded Rectangle |
+| Animations | Smooth transitions between targets | Fade transitions |
+| Pulsing effect | Yes | No |
+| Use cases | Focused UI tours, precise element highlighting | General app tours, feature introductions |
+
+### TargetShowcaseLayout Parameters
+
+In addition to the parameters shared with ShowcaseLayout, TargetShowcaseLayout offers:
+
+```kotlin
+TargetShowcaseLayout(
+    // Common parameters (same as ShowcaseLayout)
+    isShowcasing = isShowcasing,
+    isDarkLayout = false,
+    initIndex = 0,
+    animationDuration = 1000,
+    onFinish = { isShowcasing = false },
+    greeting = ShowcaseMsg(
+        "Welcome to TargetShowcaseLayout!",
+        textStyle = TextStyle(color = Color.White)
+    ),
+    lineThickness = 5.dp,
+
+    // TargetShowcaseLayout specific parameters
+    targetShape = TargetShape.CIRCLE, // CIRCLE, RECTANGLE, or ROUNDED_RECTANGLE
+    cornerRadius = 8.dp, // Only used with ROUNDED_RECTANGLE
+    animateToNextTarget = true // Smooth animation between targets, otherwise shrink and expand on each target
+) {
+    // Your UI content here
+}
+```
+
+
+<!-- SCREENSHOT PLACEHOLDER: Add a side-by-side comparison of the same UI with both layouts -->
 
 #### Additional parameters
 
@@ -297,11 +394,20 @@ In recent releases logs have been disabled by default, to print log statement of
 ```
 
 
-## Complete Example
+## Complete Examples
 
-For a complete example check
-out [MainScreen.kt](https://github.com/tahaak67/ShowcaseLayoutCompose/blob/main/app/src/main/java/ly/com/tahaben/showcaselayoutcompose/ui/MainScreen.kt) \
-or clone/download this repository and check the app module.
+### ShowcaseLayout Example
+For a complete example of the original ShowcaseLayout, check out [MainScreen.kt](https://github.com/tahaak67/ShowcaseLayoutCompose/blob/main/app/src/main/java/ly/com/tahaben/showcaselayoutcompose/ui/MainScreen.kt).
+
+### TargetShowcaseLayout Example
+For an example of the new TargetShowcaseLayout, check out the [App.kt](https://github.com/tahaak67/ShowcaseLayoutCompose/blob/main/composeApp/src/commonMain/kotlin/App.kt) file in the composeApp module.
+
+You can also clone/download this repository and run the demo app to see both layouts in action.
+
+
+| Comparison of both layouts |
+|:-------:|
+| [Add your comparison screenshot path here] |
 
 ## Contributing
 

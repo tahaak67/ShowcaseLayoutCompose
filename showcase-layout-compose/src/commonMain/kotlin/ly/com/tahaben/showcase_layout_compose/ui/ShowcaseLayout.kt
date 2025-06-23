@@ -25,7 +25,6 @@ import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.graphics.drawscope.rotate
 import androidx.compose.ui.input.pointer.pointerInput
-import androidx.compose.ui.layout.LayoutCoordinates
 import androidx.compose.ui.layout.onGloballyPositioned
 import androidx.compose.ui.layout.positionInRoot
 import androidx.compose.ui.platform.LocalDensity
@@ -42,7 +41,9 @@ import kotlinx.coroutines.launch
 import ly.com.tahaben.showcase_layout_compose.domain.Level
 import ly.com.tahaben.showcase_layout_compose.domain.ShowcaseEventListener
 import ly.com.tahaben.showcase_layout_compose.model.*
-import kotlin.math.*
+import kotlin.math.PI
+import kotlin.math.atan2
+import kotlin.math.max
 
 /**
  *     Copyright 2023 Taha Ben Ashur (tahaak67)
@@ -133,6 +134,7 @@ fun ShowcaseLayout(
     }
 
     BoxWithConstraints(modifier = Modifier.fillMaxSize()) {
+        val coroutineScope = rememberCoroutineScope()
         AnimatedVisibility(
             isShowcasing || showCasingItem || isSingleGreeting,
             enter = fadeIn(),
@@ -159,7 +161,6 @@ fun ShowcaseLayout(
             val shouldDrawArrow = (message?.arrow != null && isArrowDelayOver)
             val arrowColor = message?.arrow?.color ?: Color.White
             val density = LocalDensity.current
-            val coroutineScope = rememberCoroutineScope()
             var arrowAnimDuration by remember { mutableStateOf(message?.arrow?.animationDuration) }
             val animMsgTextAlpha = remember { Animatable(0f) }
             val animMsgAlpha = remember { Animatable(0f) }
@@ -169,6 +170,7 @@ fun ShowcaseLayout(
 
             /** to animate current arrow line */
             LaunchedEffect(key1 = currentIndex) {
+
                 message = scope.getMessageFor(currentIndex)
                 arrowAnimDuration = message?.arrow?.animationDuration
                 isArrowDelayOver = false
@@ -255,7 +257,7 @@ fun ShowcaseLayout(
                 modifier = Modifier
                     .fillMaxSize()
                     .semantics { testTag = "canvas" }
-                    .pointerInput(isShowcasing) {
+                    .pointerInput(Unit) {
                         detectTapGestures {
                             /** detect taps on the screen */
                             coroutineScope.launch {
@@ -717,9 +719,8 @@ fun ShowcaseLayout(
                                         } else {
                                             (offset.x + itemSize.width + 50)
                                         }
-                                    quadraticBezierTo(
-                                        (size.width / 2),
-                                        offset.y + itemSize.height + 0,
+                                    quadraticTo(
+                                        size.width / 2, offset.y + itemSize.height + 0,
                                         xPoint,
                                         offset.y + (itemSize.height / 2)
                                     )
@@ -731,17 +732,21 @@ fun ShowcaseLayout(
                                     when (msg.arrow?.targetFrom) {
                                         Side.Top -> {
                                             // Start from bottom center of the message card
-                                            moveTo(
-                                                cardCenterX,
-                                                cardOffset.y + cardSize.height
-                                            )
                                             if (targetShape == TargetShape.CIRCLE) {
+                                                moveTo(
+                                                    cardCenterX,
+                                                    cardOffset.y + cardSize.height
+                                                )
                                                 // For circle, point to the top edge of the circle
                                                 lineTo(
                                                     centerX,
                                                     if (hasArrowHead) centerY - radius - arrowHeadMargin else centerY - radius
                                                 )
                                             } else {
+                                                moveTo(
+                                                    offset.x + (itemSize.width / 2),
+                                                    offset.y - 180
+                                                )
                                                 lineTo(
                                                     offset.x + (itemSize.width / 2),
                                                     if (hasArrowHead) offset.y - arrowHeadMargin else offset.y
@@ -751,17 +756,21 @@ fun ShowcaseLayout(
 
                                         Side.Bottom -> {
                                             // Start from top center of the message card
-                                            moveTo(
-                                                cardCenterX,
-                                                cardOffset.y
-                                            )
                                             if (targetShape == TargetShape.CIRCLE) {
+                                                moveTo(
+                                                    cardCenterX,
+                                                    cardOffset.y
+                                                )
                                                 // For circle, point to the bottom edge of the circle
                                                 lineTo(
                                                     centerX,
                                                     if (hasArrowHead) centerY + radius + arrowHeadMargin else centerY + radius
                                                 )
                                             } else {
+                                                moveTo(
+                                                    offset.x + (itemSize.width / 2),
+                                                    offset.y + (itemSize.height + 200)
+                                                )
                                                 lineTo(
                                                     offset.x + (itemSize.width / 2),
                                                     if (hasArrowHead) offset.y + itemSize.height + arrowHeadMargin else offset.y + itemSize.height
@@ -771,17 +780,21 @@ fun ShowcaseLayout(
 
                                         Side.Left -> {
                                             // Start from right center of the message card
-                                            moveTo(
-                                                cardOffset.x + cardSize.width,
-                                                cardCenterY
-                                            )
                                             if (targetShape == TargetShape.CIRCLE) {
+                                                moveTo(
+                                                    cardOffset.x + cardSize.width,
+                                                    cardCenterY
+                                                )
                                                 // For circle, point to the left edge of the circle
                                                 lineTo(
                                                     if (hasArrowHead) centerX - radius - arrowHeadMargin else centerX - radius,
                                                     centerY
                                                 )
                                             } else {
+                                                moveTo(
+                                                    offset.x - 200,
+                                                    offset.y + (itemSize.height / 2)
+                                                )
                                                 lineTo(
                                                     if (hasArrowHead) offset.x - arrowHeadMargin else offset.x,
                                                     offset.y + (itemSize.height / 2)
@@ -791,17 +804,21 @@ fun ShowcaseLayout(
 
                                         Side.Right -> {
                                             // Start from left center of the message card
-                                            moveTo(
-                                                cardOffset.x,
-                                                cardCenterY
-                                            )
                                             if (targetShape == TargetShape.CIRCLE) {
+                                                moveTo(
+                                                    cardOffset.x,
+                                                    cardCenterY
+                                                )
                                                 // For circle, point to the right edge of the circle
                                                 lineTo(
                                                     if (hasArrowHead) centerX + radius + arrowHeadMargin else centerX + radius,
                                                     centerY
                                                 )
                                             } else {
+                                                moveTo(
+                                                    offset.x + (itemSize.width + 200),
+                                                    offset.y + (itemSize.height / 2)
+                                                )
                                                 lineTo(
                                                     if (hasArrowHead) offset.x + itemSize.width + arrowHeadMargin else offset.x + itemSize.width,
                                                     offset.y + (itemSize.height / 2)
@@ -1018,15 +1035,6 @@ class ShowcaseScopeImpl(greeting: ShowcaseMsg?) : ShowcaseScope {
         return size
     }
 
-    fun getCoordinatesFor(index: Int): LayoutCoordinates? {
-        val coordinates = showcaseDataHashMap[index]?.coordinates
-        showcaseEventListener?.onEvent(
-            Level.VERBOSE,
-            TAG + "showcase map coordinates: $coordinates"
-        )
-        return coordinates
-    }
-
     fun getPositionFor(index: Int): Offset {
         if (index == 0) {
             return showcaseDataHashMap[1]?.position ?: Offset(0f, 0f)
@@ -1043,24 +1051,4 @@ class ShowcaseScopeImpl(greeting: ShowcaseMsg?) : ShowcaseScope {
         return showcaseDataHashMap[currentIndex]?.message
     }
 
-}
-
-private fun getOuterRect(contentRect: Rect, targetRect: Rect): Rect {
-
-    val topLeftX = min(contentRect.topLeft.x, targetRect.topLeft.x)
-    val topLeftY = min(contentRect.topLeft.y, targetRect.topLeft.y)
-    val bottomRightX = max(contentRect.bottomRight.x, targetRect.bottomRight.x)
-    val bottomRightY = max(contentRect.bottomRight.y, targetRect.bottomRight.y)
-
-    return Rect(topLeftX, topLeftY, bottomRightX, bottomRightY)
-}
-
-
-private fun getOuterRadius(outerRect: Rect): Float {
-    val d = sqrt(
-        outerRect.height.toDouble().pow(2.0)
-                + outerRect.width.toDouble().pow(2.0)
-    ).toFloat()
-
-    return (d / 2f)
 }

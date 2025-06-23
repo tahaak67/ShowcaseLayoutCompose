@@ -1,4 +1,4 @@
-import java.util.Properties
+import java.util.*
 
 plugins {
     `maven-publish`
@@ -14,7 +14,7 @@ ext["ossrhUsername"] = null
 ext["ossrhPassword"] = null
 
 val publishGroupId: String = "ly.com.tahaben"
-val publishVersion: String = "1.0.6"
+val publishVersion: String = "1.0.7"
 val publishArtifactId: String = "showcase-layout-compose"
 
 

@@ -87,7 +87,6 @@ fun TargetShowcaseLayout(
         mutableIntStateOf(initIndex)
     }
     val currentContent by rememberUpdatedState(content)
-    val resetDelay by derivedStateOf { animationDuration.toLong() + INDEX_RESET_DELAY }
     val scope = ShowcaseScopeImpl(greeting)
     scope.currentContent()
     val localDensity = LocalDensity.current
@@ -125,10 +124,10 @@ fun TargetShowcaseLayout(
     }
 
     BoxWithConstraints(modifier = Modifier.fillMaxSize()) {
+        val coroutineScope = rememberCoroutineScope()
         if (isShowcasing || showCasingItem || isSingleGreeting) {
             val itemSize = scope.getSizeFor(currentIndex)
             val offset = scope.getPositionFor(currentIndex)
-            val coroutineScope = rememberCoroutineScope()
             val animatedWidth = remember { Animatable(itemSize.width) }
             val animatedHeight = remember { Animatable(itemSize.height) }
 
@@ -137,13 +136,16 @@ fun TargetShowcaseLayout(
             val maxDimension =
                 max(maxHeight.value, maxWidth.value)
 
-            val outerAnimatable = remember { Animatable(0.3f) }
+            val outerAnimatable = remember { Animatable(0.0f) }
 
-            val message = if(isSingleGreeting) singleGreetingMsg else scope.getMessageFor(currentIndex)
+            val message = if (isSingleGreeting) singleGreetingMsg else scope.getMessageFor(currentIndex)
             val textMeasurer = rememberTextMeasurer()
             val messageTextAlpha = remember { Animatable(0f) }
             val canvasColor = message?.msgBackground ?: Color.Black.copy(alpha = 0.9f)
-            val canvasColorAnimated by animateColorAsState(canvasColor, animationSpec = tween(durationMillis = animationDuration, easing = FastOutSlowInEasing))
+            val canvasColorAnimated by animateColorAsState(
+                canvasColor,
+                animationSpec = tween(durationMillis = animationDuration, easing = FastOutSlowInEasing)
+            )
 
             // Animation for overall canvas alpha to make the circle completely disappear
             val canvasAlpha = remember { Animatable(0f) }
@@ -185,16 +187,18 @@ fun TargetShowcaseLayout(
 
             LaunchedEffect(currentIndex) {
 
-                if(currentIndex == 0 || isSingleGreeting){
+                if (currentIndex == 0 || isSingleGreeting) {
                     //canvasAlpha.snapTo(0f)
-                    canvasAlpha.animateTo(1f, animationSpec = tween(durationMillis = animationDuration / 2, easing = FastOutSlowInEasing))
+                    canvasAlpha.animateTo(
+                        1f,
+                        animationSpec = tween(durationMillis = animationDuration / 2, easing = FastOutSlowInEasing)
+                    )
                 }
                 // If this is the first showcase or we're resetting, snap to initial values
                 if (currentIndex == 0 || currentIndex == initIndex) {
                     delay(animationDuration.toLong())
                     handleMessageEnterAnimation(message, messageTextAlpha, animationDuration)
-                }
-                 else {
+                } else {
                     if (animateToNextTarget && !showCasingItem) {
                         outerAnimatable.snapTo(1f)
                         // Reset canvas alpha for the new target
@@ -281,8 +285,8 @@ fun TargetShowcaseLayout(
                     }
                 }
             }
-            LaunchedEffect(isShowcasing){
-                if (isShowcasing && currentIndex != 0 && !isSingleGreeting){
+            LaunchedEffect(isShowcasing) {
+                if (isShowcasing && currentIndex != 0 && !isSingleGreeting) {
                     pulseAlpha.snapTo(0.6f)
                     pulseRadius.snapTo(0f)
                 }
@@ -298,15 +302,28 @@ fun TargetShowcaseLayout(
                                 TAG + "tapped here $it"
                             )
                             if (showCasingItem) {
+                                val shrinkDuration = animationDuration
+
+                                // Shrink both width and height simultaneously and shrink the outer circle
                                 coroutineScope.launch {
                                     handleMessageExitAnimation(message, messageTextAlpha, animationDuration)
+                                    // Shrink the outer circle
+                                    launch {
+                                        outerAnimatable.animateTo(
+                                            0f,
+                                            animationSpec = tween(
+                                                durationMillis = shrinkDuration,
+                                                easing = FastOutSlowInEasing
+                                            )
+                                        )
+                                    }
 
                                     // Fade out the entire canvas to make the circle completely disappear
                                     launch {
                                         canvasAlpha.animateTo(
                                             0f,
                                             animationSpec = tween(
-                                                durationMillis = animationDuration / 3,
+                                                durationMillis = shrinkDuration,
                                                 easing = FastOutSlowInEasing
                                             )
                                         )
@@ -317,13 +334,10 @@ fun TargetShowcaseLayout(
 
                                     // Finish showcasing the single item
                                     scope.showcaseItemFinished()
-
                                     currentIndex = initIndex
-                                    println("Showcase index reset to $currentIndex")
                                 }
                                 return@detectTapGestures
-                            }
-                            else if (isSingleGreeting) {
+                            } else if (isSingleGreeting) {
                                 coroutineScope.launch {
                                     handleMessageExitAnimation(singleGreetingMsg, messageTextAlpha, animationDuration)
 
@@ -347,9 +361,8 @@ fun TargetShowcaseLayout(
                                     currentIndex = initIndex
                                 }
                                 return@detectTapGestures
-                            }
-                            else if (currentIndex + 1 < scope.getHashMapSize()) {
-                                if (!animateToNextTarget){
+                            } else if (currentIndex + 1 < scope.getHashMapSize()) {
+                                if (!animateToNextTarget) {
                                     // Shrink at current location, then move to new location, then expand
                                     // Step 1: Shrink at current location
                                     val shrinkDuration = animationDuration
@@ -419,34 +432,34 @@ fun TargetShowcaseLayout(
                             } else {
                                 // This is the last target, finish the showcase
 
-                                    coroutineScope.launch {
-                                        val shrinkDuration = animationDuration / 2
-                                        handleMessageExitAnimation(singleGreetingMsg, messageTextAlpha, animationDuration)
+                                coroutineScope.launch {
+                                    val shrinkDuration = animationDuration / 2
+                                    handleMessageExitAnimation(singleGreetingMsg, messageTextAlpha, animationDuration)
 
-                                        // Fade out the entire canvas to make the circle completely disappear
-                                        launch {
-                                            canvasAlpha.animateTo(
-                                                0f,
-                                                animationSpec = tween(
-                                                    durationMillis = shrinkDuration,
-                                                    easing = FastOutSlowInEasing
-                                                )
+                                    // Fade out the entire canvas to make the circle completely disappear
+                                    launch {
+                                        canvasAlpha.animateTo(
+                                            0f,
+                                            animationSpec = tween(
+                                                durationMillis = shrinkDuration,
+                                                easing = FastOutSlowInEasing
                                             )
-                                        }
-
-                                        // Wait for animations to complete
-                                        delay(shrinkDuration.toLong())
-
-                                        // Reset index and call onFinish
-                                        currentIndex = initIndex
-                                        onFinish()
+                                        )
                                     }
+
+                                    // Wait for animations to complete
+                                    delay(shrinkDuration.toLong())
+
+                                    // Reset index and call onFinish
+                                    currentIndex = initIndex
+                                    onFinish()
+                                }
 
                             }
                         }
                     }
             ) {
-                if (isSingleGreeting || currentIndex == 0){
+                if (isSingleGreeting || currentIndex == 0) {
                     // For greeting, fill the entire screen with a solid color
                     drawRect(
                         color = canvasColor.copy(alpha = 0.9f),
@@ -542,7 +555,8 @@ fun TargetShowcaseLayout(
                 message?.let { msg ->
                     // First, calculate an initial estimate of available width for text
                     // This is a conservative estimate that will be refined
-                    val initialMaxWidth = min(size.width.toInt() - 200, (outerRight - outerLeft - 4 * safetyPadding).toInt())
+                    val initialMaxWidth =
+                        min(size.width.toInt() - 200, (outerRight - outerLeft - 4 * safetyPadding).toInt())
                     val maxTextWidth = max(1, initialMaxWidth)
 
                     // Measure text with appropriate constraints
@@ -626,6 +640,7 @@ fun TargetShowcaseLayout(
                                         )
                                     )
                                 }
+
                                 TargetShape.ROUNDED_RECTANGLE -> {
                                     // Draw a rounded rectangle for the inner cutout
                                     val rect = Rect(
@@ -641,7 +656,7 @@ fun TargetShowcaseLayout(
                                         bottom = itemCenter.y + rectHalfHeight,
                                     )
 
-                                    val cornerRadiusPx = with(localDensity){
+                                    val cornerRadiusPx = with(localDensity) {
                                         cornerRadius.toPx()
                                     }
 
@@ -703,6 +718,7 @@ fun TargetShowcaseLayout(
 
                                     close()
                                 }
+
                                 else -> {
                                     // Draw a rectangle for the inner cutout that matches the target's exact dimensions
                                     addRect(
@@ -746,6 +762,7 @@ fun TargetShowcaseLayout(
                                         )
                                     )
                                 }
+
                                 TargetShape.ROUNDED_RECTANGLE -> {
                                     // Draw a rounded rectangle for the outer pulse
                                     val rect = Rect(
@@ -814,6 +831,7 @@ fun TargetShowcaseLayout(
 
                                     close()
                                 }
+
                                 else -> {
                                     // Draw a rectangle for the outer pulse that matches the target's exact dimensions
                                     addRect(
@@ -842,6 +860,7 @@ fun TargetShowcaseLayout(
                                         )
                                     )
                                 }
+
                                 TargetShape.ROUNDED_RECTANGLE -> {
                                     // Draw a rounded rectangle for the inner pulse
                                     val rect = Rect(
@@ -910,6 +929,7 @@ fun TargetShowcaseLayout(
 
                                     close()
                                 }
+
                                 else -> {
                                     // Draw a rectangle for the inner pulse that matches the target's exact dimensions
                                     addRect(
@@ -944,7 +964,8 @@ fun TargetShowcaseLayout(
                     // Calculate the maximum width available for text
                     // Use a narrower width to ensure text wraps appropriately and stays within bounds
                     // Use a more conservative width to ensure text doesn't extend beyond outer circle
-                    val calculatedWidth = min(size.width.toInt() - 200, (outerRight - outerLeft - 4 * safetyPadding).toInt())
+                    val calculatedWidth =
+                        min(size.width.toInt() - 200, (outerRight - outerLeft - 4 * safetyPadding).toInt())
                     // Ensure maxTextWidth is always positive to avoid Constraints exception
                     val maxTextWidth = max(1, calculatedWidth)
 
@@ -1067,7 +1088,8 @@ fun TargetShowcaseLayout(
                     if (bgRect.left < outerLeft + safetyPadding + extraSafetyMargin ||
                         bgRect.right > outerRight - safetyPadding - extraSafetyMargin ||
                         bgRect.top < outerTop + safetyPadding + extraSafetyMargin ||
-                        bgRect.bottom > outerBottom - safetyPadding - extraSafetyMargin) {
+                        bgRect.bottom > outerBottom - safetyPadding - extraSafetyMargin
+                    ) {
                         scope.showcaseEventListener?.onEvent(
                             Level.INFO,
                             TAG + "Text is very close to the edge of the outer circle."
@@ -1085,6 +1107,7 @@ fun TargetShowcaseLayout(
         }
     }
 }
+
 suspend fun handleMessageExitAnimation(
     message: ShowcaseMsg?,
     messageTextAlpha: Animatable<Float, AnimationVector1D>,
@@ -1101,13 +1124,16 @@ suspend fun handleMessageExitAnimation(
                 )
             )
         }
+
         MsgAnimation.None -> {
             // Make the message text disappear
             messageTextAlpha.snapTo(0f)
         }
+
         null -> Unit
     }
 }
+
 suspend fun handleMessageEnterAnimation(
     message: ShowcaseMsg?,
     messageTextAlpha: Animatable<Float, AnimationVector1D>,
@@ -1124,10 +1150,12 @@ suspend fun handleMessageEnterAnimation(
                 )
             )
         }
+
         MsgAnimation.None -> {
             // Make the message text disappear
             messageTextAlpha.snapTo(1f)
         }
+
         null -> Unit
     }
 }
