@@ -24,7 +24,11 @@ Create beautiful animated showcase effects for your compose UIs easily!
 
 |                               ShowcaseLayout                                |
 |:---------------------------------------------------------------------------:|
-| <img src="metadata/gif/slc-light.gif" alt="Library demo GIF" width="300" /> |
+| <img src="metadata/gif/slc-light.gif" alt="Library demo GIF" width="300" /> | 
+
+https://github.com/user-attachments/assets/faa5dc19-606a-4731-80b1-44cbf6d08fdc
+
+
 
 
 <img src="metadata/screenshots/screenshot-13.png" alt="Library demo GIF" width="300" />.<img src="metadata/screenshots/screenshot-14.png" alt="Library demo GIF" width="300" />
@@ -39,7 +43,7 @@ Showcase Layout Compose can be used in **both** Jetpack Compose (native Android)
 Add the dependency to your module's `build.gradle` file like below
 
 ``` kotlin
-implementation("ly.com.tahaben:showcase-layout-compose:1.0.6")
+implementation("ly.com.tahaben:showcase-layout-compose:1.0.7")
 ```
 ## Usage
 
