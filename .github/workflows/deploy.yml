@@ -32,7 +32,7 @@ jobs:
 
       - name: Build
         run: |
-          ./gradlew :composeApp:wasmJsBrowserProductionWebpack --no-configuration-cache
+          ./gradlew :composeApp:wasmJsBrowserDistribution --no-configuration-cache
 
       - name: Deploy
         uses: JamesIves/github-pages-deploy-action@v4
