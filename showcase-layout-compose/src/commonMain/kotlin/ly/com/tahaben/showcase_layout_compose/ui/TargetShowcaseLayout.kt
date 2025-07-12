@@ -402,27 +402,10 @@ fun TargetShowcaseLayout(
                                     }
 
                                 } else {
-                                    // When animateToNextTarget is true, we still want to fade out the outer circle
-                                    // before moving to the next target, but we remove it
+                                    // When animateToNextTarget is true, we don't want to fade out the outer circle
+                                    // we just handle message animation if any then move to the next target
                                     coroutineScope.launch {
                                         handleMessageExitAnimation(message, messageTextAlpha, animationDuration)
-
-                                        // Fade out the entire canvas to make the circle completely disappear
-                                        launch {
-                                            canvasAlpha.animateTo(
-                                                0f, // Fade to 30% opacity instead of 0 for smoother transition
-                                                animationSpec = tween(
-                                                    durationMillis = animationDuration / 3,
-                                                    easing = FastOutSlowInEasing
-                                                )
-                                            )
-                                        }
-
-                                        // Wait for animations to complete
-                                        delay((animationDuration / 3).toLong())
-
-                                        // Reset canvas alpha for the next target
-                                        canvasAlpha.snapTo(1f)
 
                                         // Move to the next target
                                         currentIndex++
