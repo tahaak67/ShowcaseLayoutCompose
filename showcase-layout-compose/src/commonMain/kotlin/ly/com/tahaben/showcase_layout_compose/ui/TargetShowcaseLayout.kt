@@ -117,7 +117,6 @@ fun TargetShowcaseLayout(
                     TAG + "showcase single greeting: ${singleGreeting.value?.text}"
                 )
                 singleGreetingMsg = singleGreeting.value
-                currentIndex = 0
                 true
             } else {
                 false
@@ -128,8 +127,8 @@ fun TargetShowcaseLayout(
     BoxWithConstraints(modifier = Modifier.fillMaxSize()) {
         val coroutineScope = rememberCoroutineScope()
         if (isShowcasing || showCasingItem || isSingleGreeting) {
-            val itemSize = scope.getSizeFor(currentIndex)
-            val offset = scope.getPositionFor(currentIndex)
+            var itemSize = scope.getSizeFor(currentIndex)
+            var offset = scope.getPositionFor(currentIndex)
             val animatedWidth = remember { Animatable(itemSize.width) }
             val animatedHeight = remember { Animatable(itemSize.height) }
 
@@ -140,10 +139,10 @@ fun TargetShowcaseLayout(
 
             val outerAnimatable = remember { Animatable(0.0f) }
 
-            val message = if (isSingleGreeting) singleGreetingMsg else scope.getMessageFor(currentIndex)
+            var message =  if (isSingleGreeting) singleGreetingMsg else scope.getMessageFor(currentIndex)
             val textMeasurer = rememberTextMeasurer()
             val messageTextAlpha = remember { Animatable(0f) }
-            val canvasColor = message?.msgBackground ?: Color.Black.copy(alpha = 0.9f)
+            var canvasColor =  message?.msgBackground ?: Color.Black.copy(alpha = 0.9f)
             val canvasColorAnimated by animateColorAsState(
                 canvasColor,
                 animationSpec = tween(durationMillis = animationDuration, easing = FastOutSlowInEasing)
@@ -198,8 +197,23 @@ fun TargetShowcaseLayout(
                 }
                 // If this is the first showcase or we're resetting, snap to initial values
                 if (currentIndex == 0 || currentIndex == validatedInitIndex) {
+
+                    canvasAlpha.snapTo(1f)
+                    itemSize = scope.getSizeFor(currentIndex)
+                    offset = scope.getPositionFor(currentIndex)
+                    animatedX.snapTo(offset.x)
+                    animatedY.snapTo(offset.y)
+                    message = scope.getMessageFor(currentIndex)
+                    canvasColor =  message?.msgBackground ?: Color.Black.copy(alpha = 0.9f)
+                    println("canvas color: $canvasColor")
                     delay(animationDuration.toLong())
                     handleMessageEnterAnimation(message, messageTextAlpha, animationDuration)
+                    outerAnimatable.animateTo(
+                        1f,
+                        animationSpec = tween(
+                            durationMillis = animationDuration,
+                            easing = FastOutSlowInEasing
+                        ))
                 } else {
                     if (animateToNextTarget && !showCasingItem) {
                         outerAnimatable.snapTo(1f)
@@ -723,11 +737,19 @@ fun TargetShowcaseLayout(
 
                 // Draw the donut path with the dimensions that have been adjusted for text
                 // Apply canvasAlpha to make the circle completely disappear during transitions
-                drawPath(
-                    path = donutPath,
-                    color = canvasColorAnimated.copy(alpha = 0.9f * canvasAlpha.value),
-                    style = Fill // Fill the donut shape
-                )
+                if (currentIndex == validatedInitIndex){
+                    drawPath(
+                        path = donutPath,
+                        color = canvasColor.copy(alpha = 0.9f * canvasAlpha.value),
+                        style = Fill // Fill the donut shape
+                    )
+                }else{
+                    drawPath(
+                        path = donutPath,
+                        color = canvasColorAnimated.copy(alpha = 0.9f * canvasAlpha.value),
+                        style = Fill // Fill the donut shape
+                    )
+                }
 
                 // Draw the pulsing ring (outside the punch)
                 val pulsePath = Path().apply {
