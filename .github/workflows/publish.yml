@@ -62,3 +62,4 @@ jobs:
         with:
           url: 'https://ossrh-staging-api.central.sonatype.com/manual/upload/defaultRepository/ly.com.tahaben'
           bearerToken: ${{  secrets.OSSRH_HEADER  }}
+          timeout: '20000'
