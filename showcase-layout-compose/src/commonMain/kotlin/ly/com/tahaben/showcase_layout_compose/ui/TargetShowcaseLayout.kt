@@ -27,6 +27,7 @@ import androidx.compose.ui.unit.dp
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import ly.com.tahaben.showcase_layout_compose.domain.Level
+import ly.com.tahaben.showcase_layout_compose.domain.usecase.validateInitIndex
 import ly.com.tahaben.showcase_layout_compose.model.MsgAnimation
 import ly.com.tahaben.showcase_layout_compose.model.ShowcaseMsg
 import ly.com.tahaben.showcase_layout_compose.model.TargetShape
@@ -83,8 +84,9 @@ fun TargetShowcaseLayout(
     animateToNextTarget: Boolean = true,
     content: @Composable ShowcaseScope.() -> Unit
 ) {
+    val validatedInitIndex = remember(initIndex, greeting) { validateInitIndex(initIndex, greeting) }
     var currentIndex by remember {
-        mutableIntStateOf(initIndex)
+        mutableIntStateOf(validatedInitIndex)
     }
     val currentContent by rememberUpdatedState(content)
     val scope = ShowcaseScopeImpl(greeting)
@@ -99,7 +101,7 @@ fun TargetShowcaseLayout(
                     Level.DEBUG,
                     TAG + "showcase single item index: ${showcaseItem.value}"
                 )
-                currentIndex = showcaseItem.value ?: initIndex
+                currentIndex = showcaseItem.value ?: validatedInitIndex
                 true
             } else {
                 false
@@ -195,7 +197,7 @@ fun TargetShowcaseLayout(
                     )
                 }
                 // If this is the first showcase or we're resetting, snap to initial values
-                if (currentIndex == 0 || currentIndex == initIndex) {
+                if (currentIndex == 0 || currentIndex == validatedInitIndex) {
                     delay(animationDuration.toLong())
                     handleMessageEnterAnimation(message, messageTextAlpha, animationDuration)
                 } else {
@@ -334,7 +336,7 @@ fun TargetShowcaseLayout(
 
                                     // Finish showcasing the single item
                                     scope.showcaseItemFinished()
-                                    currentIndex = initIndex
+                                    currentIndex = validatedInitIndex
                                 }
                                 return@detectTapGestures
                             } else if (isSingleGreeting) {
@@ -358,7 +360,7 @@ fun TargetShowcaseLayout(
                                     // Finish showcasing the greeting
                                     scope.showGreetingFinished()
 
-                                    currentIndex = initIndex
+                                    currentIndex = validatedInitIndex
                                 }
                                 return@detectTapGestures
                             } else if (currentIndex + 1 < scope.getHashMapSize()) {
@@ -434,7 +436,7 @@ fun TargetShowcaseLayout(
                                     delay(shrinkDuration.toLong())
 
                                     // Reset index and call onFinish
-                                    currentIndex = initIndex
+                                    currentIndex = validatedInitIndex
                                     onFinish()
                                 }
 
