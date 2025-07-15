@@ -271,8 +271,7 @@ ShowcaseLayout(
 
 #### initIndex
 
-the initial value of the counter, set this to 1 if you don't want a greeting message before
-showcasing targets.
+the initial value of what index will showcase first.
 
 #### animationDuration
 
