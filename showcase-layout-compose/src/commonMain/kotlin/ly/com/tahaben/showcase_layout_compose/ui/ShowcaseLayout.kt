@@ -1,12 +1,6 @@
 package ly.com.tahaben.showcase_layout_compose.ui
 
-import androidx.compose.animation.AnimatedVisibility
-import androidx.compose.animation.core.Animatable
-import androidx.compose.animation.core.animateOffsetAsState
-import androidx.compose.animation.core.animateSizeAsState
-import androidx.compose.animation.core.tween
-import androidx.compose.animation.fadeIn
-import androidx.compose.animation.fadeOut
+import androidx.compose.animation.core.*
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.layout.Box
@@ -40,6 +34,7 @@ import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
 import ly.com.tahaben.showcase_layout_compose.domain.Level
 import ly.com.tahaben.showcase_layout_compose.domain.ShowcaseEventListener
+import ly.com.tahaben.showcase_layout_compose.domain.usecase.validateInitIndex
 import ly.com.tahaben.showcase_layout_compose.model.*
 import kotlin.math.PI
 import kotlin.math.atan2
@@ -92,8 +87,9 @@ fun ShowcaseLayout(
     cornerRadius: Dp = 16.dp,
     content: @Composable ShowcaseScope.() -> Unit
 ) {
+    val validatedInitIndex = remember(initIndex, greeting) { validateInitIndex(initIndex, greeting) }
     var currentIndex by remember {
-        mutableIntStateOf(initIndex)
+        mutableIntStateOf(validatedInitIndex)
     }
     val currentContent by rememberUpdatedState(content)
     val resetDelay by derivedStateOf { animationDuration.toLong() + INDEX_RESET_DELAY }
@@ -109,7 +105,7 @@ fun ShowcaseLayout(
                     Level.DEBUG,
                     TAG + "showcase single item index: ${showcaseItem.value}"
                 )
-                currentIndex = showcaseItem.value ?: initIndex
+                currentIndex = showcaseItem.value ?: validatedInitIndex
                 true
             } else {
                 false
@@ -125,7 +121,7 @@ fun ShowcaseLayout(
                     TAG + "showcase single greeting: ${singleGreeting.value?.text}"
                 )
                 singleGreetingMsg = singleGreeting.value
-                currentIndex = 0
+                currentIndex = validatedInitIndex
                 true
             } else {
                 false
@@ -135,11 +131,7 @@ fun ShowcaseLayout(
 
     BoxWithConstraints(modifier = Modifier.fillMaxSize()) {
         val coroutineScope = rememberCoroutineScope()
-        AnimatedVisibility(
-            isShowcasing || showCasingItem || isSingleGreeting,
-            enter = fadeIn(),
-            exit = fadeOut()
-        ) {
+        if (isShowcasing || showCasingItem || isSingleGreeting) {
             val offset by animateOffsetAsState(
                 targetValue = scope.getPositionFor(currentIndex),
                 animationSpec = tween(animationDuration),
@@ -166,11 +158,16 @@ fun ShowcaseLayout(
             val animMsgAlpha = remember { Animatable(0f) }
             val animArrow = remember { Animatable(0f) }
             val animArrowHead = remember { Animatable(0f) }
+            val canvasAlpha = remember { Animatable(0f) }
 
-
-            /** to animate current arrow line */
+            /** to animate canvas alpha and current arrow line */
             LaunchedEffect(key1 = currentIndex) {
-
+                if (currentIndex == validatedInitIndex || showCasingItem || isSingleGreeting) {
+                    canvasAlpha.animateTo(
+                        1f,
+                        animationSpec = tween(durationMillis = animationDuration / 2, easing = FastOutSlowInEasing)
+                    )
+                }
                 message = scope.getMessageFor(currentIndex)
                 arrowAnimDuration = message?.arrow?.animationDuration
                 isArrowDelayOver = false
@@ -217,11 +214,12 @@ fun ShowcaseLayout(
                         }
                     }
                 }
-                if (currentIndex == 0) {
+                if (currentIndex == validatedInitIndex) {
                     if (isSingleGreeting) {
                         message = singleGreetingMsg
                     }
                     message?.let { msg ->
+                        if (msg.msgBackground != null)
                         animMsgAlpha.animateTo(1f, tween(msg.enterAnim.duration))
                         animMsgTextAlpha.animateTo(1f, tween(msg.enterAnim.duration))
                     }
@@ -234,6 +232,7 @@ fun ShowcaseLayout(
                         when (msg.enterAnim) {
                             is MsgAnimation.FadeInOut -> {
                                 val duration = msg.enterAnim.duration
+                                if (msg.msgBackground != null)
                                 animMsgAlpha.animateTo(1f, tween(duration))
                                 animMsgTextAlpha.animateTo(1f, tween(duration))
                             }
@@ -289,6 +288,7 @@ fun ShowcaseLayout(
                                         is MsgAnimation.FadeInOut -> {
                                             val duration = msg.enterAnim.duration
                                             animMsgTextAlpha.animateTo(0f, tween(duration))
+                                            if (msg.msgBackground != null)
                                             animMsgAlpha.animateTo(0f, tween(duration))
                                         }
 
@@ -299,15 +299,21 @@ fun ShowcaseLayout(
                                     }
                                 }
                                 if (showCasingItem) {
+                                    canvasAlpha.animateTo(
+                                        0f,
+                                        animationSpec = tween(durationMillis = animationDuration / 2, easing = FastOutSlowInEasing)
+                                    )
                                     scope.showcaseItemFinished()
-                                    delay(resetDelay)
-                                    currentIndex = initIndex
+                                    currentIndex = validatedInitIndex
                                     return@launch
                                 }
                                 if (isSingleGreeting) {
+                                    canvasAlpha.animateTo(
+                                        0f,
+                                        animationSpec = tween(durationMillis = animationDuration / 2, easing = FastOutSlowInEasing)
+                                    )
                                     scope.showGreetingFinished()
-                                    delay(resetDelay)
-                                    currentIndex = initIndex
+                                    currentIndex = validatedInitIndex
                                     return@launch
                                 }
                                 if (currentIndex + 1 < scope.getHashMapSize()) {
@@ -323,9 +329,13 @@ fun ShowcaseLayout(
                                         Level.INFO,
                                         TAG + "finished"
                                     )
+                                    canvasAlpha.animateTo(
+                                        0f,
+                                        animationSpec = tween(durationMillis = animationDuration / 2, easing = FastOutSlowInEasing)
+                                    )
                                     onFinish()
                                     delay(resetDelay)
-                                    currentIndex = initIndex
+                                    currentIndex = validatedInitIndex
                                 }
                                 isArrowDelayOver = false
                             }
@@ -341,8 +351,7 @@ fun ShowcaseLayout(
                     if (currentIndex == 0 || isSingleGreeting) {
                         // Draw a full canvas without any cutout for greeting or index 0
                         drawRect(
-                            color = if (isDarkLayout) Color.White else Color.Black,
-                            alpha = 0.80f,
+                            color = if (isDarkLayout) Color.White.copy(alpha = 0.9f * canvasAlpha.value) else Color.Black.copy(alpha = 0.9f * canvasAlpha.value),
                             size = size
                         )
                     } else {
@@ -373,10 +382,10 @@ fun ShowcaseLayout(
                                 /** draw the showcasePath */
                                 drawPath(
                                     path = showcasePath,
-                                    color = if (isDarkLayout) Color.White else Color.Black,
-                                    alpha = 0.80f,
+                                    color = if (isDarkLayout) Color.White.copy(alpha = 0.9f * canvasAlpha.value) else Color.Black.copy(alpha = 0.9f * canvasAlpha.value),
                                 )
                             }
+
                             TargetShape.CIRCLE -> {
                                 // Calculate the center and radius of the circle
                                 val centerX = offset.x + itemSize.width / 2
@@ -391,12 +400,14 @@ fun ShowcaseLayout(
 
                                 // Create a path for the target area (circle)
                                 val targetPath = Path().apply {
-                                    addOval(Rect(
-                                        centerX - radius,
-                                        centerY - radius,
-                                        centerX + radius,
-                                        centerY + radius
-                                    ))
+                                    addOval(
+                                        Rect(
+                                            centerX - radius,
+                                            centerY - radius,
+                                            centerX + radius,
+                                            centerY + radius
+                                        )
+                                    )
                                 }
 
                                 // Create a combined path with a hole
@@ -408,10 +419,10 @@ fun ShowcaseLayout(
                                 // Draw the path
                                 drawPath(
                                     path = showcasePath,
-                                    color = if (isDarkLayout) Color.White else Color.Black,
-                                    alpha = 0.80f,
+                                    color = if (isDarkLayout) Color.White.copy(alpha = 0.9f * canvasAlpha.value) else Color.Black.copy(alpha = 0.9f * canvasAlpha.value),
                                 )
                             }
+
                             TargetShape.ROUNDED_RECTANGLE -> {
                                 // Create paths for the outer and inner areas
                                 val outerPath = Path().apply {
@@ -492,8 +503,7 @@ fun ShowcaseLayout(
                                 // Draw the path
                                 drawPath(
                                     path = showcasePath,
-                                    color = if (isDarkLayout) Color.White else Color.Black,
-                                    alpha = 0.80f,
+                                    color = if (isDarkLayout) Color.White.copy(alpha = 0.9f * canvasAlpha.value) else Color.Black.copy(alpha = 0.9f * canvasAlpha.value),
                                 )
                             }
                         }
@@ -519,7 +529,7 @@ fun ShowcaseLayout(
 
                         /** Determine if message will be shown on top or below target */
                         val yOffset =
-                            if (currentIndex == 0) (size.height / 2) else with(density) {
+                            if (currentIndex == 0 || isSingleGreeting) (size.height / 2) else with(density) {
                                 val currentItemYPosition = scope.getPositionFor(currentIndex).y
                                 val currentItemHeight = scope.getSizeFor(currentIndex).height
 
@@ -573,7 +583,7 @@ fun ShowcaseLayout(
                         will get cut off, if that's the case we align the message Start or End to
                         the target Start or End as appropriate
                          */
-                        val xOffset = if (currentIndex == 0 || msg.arrow?.curved == true) {
+                        val xOffset = if (currentIndex == 0 || isSingleGreeting || msg.arrow?.curved == true) {
                             halfWidth - messageWidthHalf
                         } else {
                             val currentItemXPosition = scope.getPositionFor(currentIndex).x
@@ -683,6 +693,7 @@ fun ShowcaseLayout(
                                                 cardOffset.y + cardSize.height
                                             )
                                         }
+
                                         Side.Bottom -> {
                                             // Start from top center of the message card
                                             moveTo(
@@ -690,6 +701,7 @@ fun ShowcaseLayout(
                                                 cardOffset.y
                                             )
                                         }
+
                                         Side.Left -> {
                                             // Start from right center of the message card
                                             moveTo(
@@ -697,6 +709,7 @@ fun ShowcaseLayout(
                                                 cardCenterY
                                             )
                                         }
+
                                         Side.Right -> {
                                             // Start from left center of the message card
                                             moveTo(
@@ -704,6 +717,7 @@ fun ShowcaseLayout(
                                                 cardCenterY
                                             )
                                         }
+
                                         else -> {
                                             // Default to bottom center if targetFrom is not specified
                                             moveTo(

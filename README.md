@@ -2,7 +2,7 @@
 [![GitHub issues](https://img.shields.io/github/issues/tahaak67/ShowcaseLayoutCompose)](https://github.com/tahaak67/ShowcaseLayoutCompose/issues)
 [![GitHub stars](https://img.shields.io/github/stars/tahaak67/ShowcaseLayoutCompose)](https://github.com/tahaak67/ShowcaseLayoutCompose/stargazers)
 [![GitHub license](https://img.shields.io/github/license/tahaak67/ShowcaseLayoutCompose)](https://github.com/tahaak67/ShowcaseLayoutCompose/blob/main/LICENSE)
-[![Compose Multiplatform](https://img.shields.io/badge/Compose%20Multiplatform-v1.6.1-blue)](https://github.com/JetBrains/compose-multiplatform)
+[![Compose Multiplatform](https://img.shields.io/badge/Compose%20Multiplatform-v1.8.1-blue)](https://github.com/JetBrains/compose-multiplatform)
 ![badge-android](http://img.shields.io/badge/platform-android-3DDC84.svg)
 ![badge-ios](http://img.shields.io/badge/platform-ios-CDCDCD.svg)
 ![badge-desktop](http://img.shields.io/badge/platform-desktop-DB413D.svg)
@@ -43,7 +43,7 @@ Showcase Layout Compose can be used in **both** Jetpack Compose (native Android)
 Add the dependency to your module's `build.gradle` file like below
 
 ``` kotlin
-implementation("ly.com.tahaben:showcase-layout-compose:1.0.8")
+implementation("ly.com.tahaben:showcase-layout-compose:1.0.9")
 ```
 ## Usage
 
@@ -271,8 +271,7 @@ ShowcaseLayout(
 
 #### initIndex
 
-the initial value of the counter, set this to 1 if you don't want a greeting message before
-showcasing targets.
+the initial value of what index will showcase first.
 
 #### animationDuration
 

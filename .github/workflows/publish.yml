@@ -39,7 +39,7 @@ jobs:
 
       - name: Publish to MavenCentral
 
-        run: ./gradlew publishToSonatype --max-workers 1 closeAndReleaseSonatypeStagingRepository
+        run: ./gradlew publishAllPublicationsToSonatype2Repository --max-workers 1
 
 
         env:
