@@ -1,10 +1,10 @@
-import org.jetbrains.kotlin.gradle.targets.js.dsl.ExperimentalWasmDsl
 import org.jetbrains.kotlin.gradle.targets.js.webpack.KotlinWebpackConfig
 
 plugins {
-    kotlin("multiplatform")
-    id("com.android.library")
-    id("org.jetbrains.compose")
+    alias(libs.plugins.kotlinMultiplatform)
+    alias(libs.plugins.androidLibrary)
+    alias(libs.plugins.jetbrainsCompose)
+    alias(libs.plugins.compose.compiler)
     id("convention.publication")
 }
 
@@ -18,9 +18,9 @@ kotlin {
     iosArm64()
     iosSimulatorArm64()
 
-    @OptIn(ExperimentalWasmDsl::class)
+    @OptIn(org.jetbrains.kotlin.gradle.ExperimentalWasmDsl::class)
     wasmJs {
-        moduleName = "composeApp"
+        outputModuleName = "composeApp"
         browser {
             commonWebpackConfig {
                 outputFileName = "composeApp.js"
@@ -65,7 +65,7 @@ kotlin {
 }
 
 android {
-    compileSdk = 34
+    compileSdk = 35
     namespace = "ly.com.tahaben.showcaselayoutcompose"
 
     compileOptions {
@@ -75,9 +75,4 @@ android {
     kotlin {
         jvmToolchain(17)
     }
-}
-
-
-compose.experimental {
-    web.application {}
 }

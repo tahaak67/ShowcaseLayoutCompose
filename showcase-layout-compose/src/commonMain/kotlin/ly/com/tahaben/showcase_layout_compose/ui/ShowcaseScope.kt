@@ -52,7 +52,5 @@ interface ShowcaseScope {
     fun registerEventListener(eventListener: ShowcaseEventListener)
 
     suspend fun showcaseItem(index: Int)
-//    suspend fun showcaseItemFinished()
     suspend fun showGreeting(message: ShowcaseMsg)
-//    suspend fun showGreetingFinished()
 }

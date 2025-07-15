@@ -1,6 +1,7 @@
 package ly.com.tahaben.showcase_layout_compose.model
 
 import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.layout.LayoutCoordinates
 import androidx.compose.ui.unit.IntSize
 
 /**
@@ -23,5 +24,6 @@ import androidx.compose.ui.unit.IntSize
 data class ShowcaseData(
     val size: IntSize,
     val position: Offset,
-    val message: ShowcaseMsg? = null
+    val message: ShowcaseMsg? = null,
+    val coordinates: LayoutCoordinates? = null
 )

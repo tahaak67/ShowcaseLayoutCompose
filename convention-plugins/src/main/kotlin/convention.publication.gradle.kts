@@ -1,4 +1,4 @@
-import java.util.Properties
+import java.util.*
 
 plugins {
     `maven-publish`
@@ -14,7 +14,7 @@ ext["ossrhUsername"] = null
 ext["ossrhPassword"] = null
 
 val publishGroupId: String = "ly.com.tahaben"
-val publishVersion: String = "1.0.5"
+val publishVersion: String = "1.0.8"
 val publishArtifactId: String = "showcase-layout-compose"
 
 
@@ -52,7 +52,7 @@ publishing {
     repositories {
         maven {
             name = "sonatype"
-            setUrl("https://s01.oss.sonatype.org/service/local/staging/deploy/maven2/")
+            setUrl("https://ossrh-staging-api.central.sonatype.com/service/local/staging/deploy/maven2/")
             credentials {
                 username = getExtraString("ossrhUsername")
                 password = getExtraString("ossrhPassword")
