@@ -1,20 +1,21 @@
 [versions]
-agp = "8.2.2"
+agp = "8.13.2"
 android-compileSdk = "35"
 android-minSdk = "24"
 android-targetSdk = "35"
-androidx-activityCompose = "1.10.1"
+androidx-activityCompose = "1.13.0"
 androidx-appcompat = "1.7.1"
 androidx-constraintlayout = "2.2.1"
-androidx-core-ktx = "1.16.0"
-androidx-espresso-core = "3.6.1"
-androidx-material = "1.12.0"
-androidx-test-junit = "1.2.1"
-compose = "1.8.2"
-compose-plugin = "1.8.1"
+androidx-core-ktx = "1.19.0"
+androidx-espresso-core = "3.7.0"
+androidx-material = "1.14.0"
+androidx-test-junit = "1.3.0"
+compose = "1.11.2"
+compose-plugin = "1.11.1"
 junit = "4.13.2"
-kotlin = "2.1.21"
-nexusPublishing = "1.3.0"
+kotlin = "2.4.0"
+mavenPublish = "0.36.0"
+versionUpdates = "1.1.0"
 
 [libraries]
 kotlin-test = { module = "org.jetbrains.kotlin:kotlin-test", version.ref = "kotlin" }
@@ -37,4 +38,5 @@ jetbrainsCompose = { id = "org.jetbrains.compose", version.ref = "compose-plugin
 kotlinMultiplatform = { id = "org.jetbrains.kotlin.multiplatform", version.ref = "kotlin" }
 jetbrainsKotlinAndroid = { id = "org.jetbrains.kotlin.android", version.ref = "kotlin" }
 compose-compiler = { id = "org.jetbrains.kotlin.plugin.compose", version.ref = "kotlin" }
-nexusPublishing = { id = "io.github.gradle-nexus.publish-plugin", version.ref = "nexusPublishing" }
+mavenPublish = { id = "com.vanniktech.maven.publish", version.ref = "mavenPublish" }
+versionCatalogUpdate = { id = "nl.littlerobots.version-catalog-update", version.ref = "versionUpdates" }
