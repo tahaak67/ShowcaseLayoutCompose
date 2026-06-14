@@ -311,6 +311,22 @@ ShowcaseLayout(
 ) 
 ```
 
+#### advanceOnTargetTapOnly
+
+By default a tap anywhere on the screen advances to the next target (or dismisses the showcase). Set
+`advanceOnTargetTapOnly = true` to only advance when the user taps **inside the highlighted target
+shape** — taps elsewhere are ignored. Useful when you want the user to actually interact with (or
+notice) the highlighted element before moving on. The greeting/initial screen still advances on any
+tap. Defaults to `false`. Available on both `ShowcaseLayout` and `TargetShowcaseLayout`.
+
+```kotlin
+ShowcaseLayout(
+    isShowcasing = isShowcasing,
+    onFinish = { isShowcasing = false },
+    advanceOnTargetTapOnly = true
+)
+```
+
 #### ShowcaseMsg
 
 Use `ShowcaseMsg()` to add a message and customize it with arrow, background and more.

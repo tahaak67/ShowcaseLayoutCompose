@@ -1,8 +1,9 @@
 [versions]
 agp = "8.13.2"
-android-compileSdk = "35"
+android-compileSdk = "36"
 android-minSdk = "24"
-android-targetSdk = "35"
+#noinspection EditedTargetSdkVersion
+android-targetSdk = "36"
 androidx-activityCompose = "1.13.0"
 androidx-appcompat = "1.7.1"
 androidx-constraintlayout = "2.2.1"

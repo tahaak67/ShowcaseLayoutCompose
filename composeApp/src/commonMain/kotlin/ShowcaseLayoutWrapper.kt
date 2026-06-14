@@ -21,6 +21,7 @@ import ly.com.tahaben.showcase_layout_compose.ui.TargetShowcaseLayout
  * @param targetShape the shape of the target highlight (RECTANGLE, CIRCLE, or ROUNDED_RECTANGLE).
  * @param cornerRadius the corner radius for the ROUNDED_RECTANGLE shape in dp.
  * @param animateToNextTarget if true, the target shape will animate smoothly from one target to the next when the index changes (only used in TargetShowcaseLayout).
+ * @param advanceOnTargetTapOnly when true, only taps inside the highlighted target advance/dismiss the showcase; the greeting always advances on any tap.
  * @param colors the colors used to draw the overlay (and pulse for TargetShowcaseLayout), created with [ShowcaseLayoutDefaults.colors].
  */
 @Composable
@@ -35,6 +36,7 @@ fun ShowcaseLayoutWrapper(
     targetShape: TargetShape = TargetShape.RECTANGLE,
     cornerRadius: Dp = 16.dp,
     animateToNextTarget: Boolean = true,
+    advanceOnTargetTapOnly: Boolean = true,
     colors: ShowcaseLayoutDefaults.Colors = ShowcaseLayoutDefaults.colors(),
     content: @Composable ShowcaseScope.() -> Unit
 ) {
@@ -49,6 +51,7 @@ fun ShowcaseLayoutWrapper(
             targetShape = targetShape,
             cornerRadius = cornerRadius,
             animateToNextTarget = animateToNextTarget,
+            advanceOnTargetTapOnly = advanceOnTargetTapOnly,
             colors = colors,
             content = content
         )
@@ -62,6 +65,7 @@ fun ShowcaseLayoutWrapper(
             lineThickness = lineThickness,
             targetShape = targetShape,
             cornerRadius = cornerRadius,
+            advanceOnTargetTapOnly = advanceOnTargetTapOnly,
             colors = colors,
             content = content
         )

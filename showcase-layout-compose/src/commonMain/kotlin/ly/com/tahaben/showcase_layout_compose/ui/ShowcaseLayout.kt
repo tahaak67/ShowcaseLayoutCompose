@@ -34,6 +34,7 @@ import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
 import ly.com.tahaben.showcase_layout_compose.domain.Level
 import ly.com.tahaben.showcase_layout_compose.domain.ShowcaseEventListener
+import ly.com.tahaben.showcase_layout_compose.domain.usecase.isTapInsideTarget
 import ly.com.tahaben.showcase_layout_compose.domain.usecase.validateInitIndex
 import ly.com.tahaben.showcase_layout_compose.model.*
 import kotlin.math.PI
@@ -59,6 +60,7 @@ import kotlin.math.max
 
 private const val TAG = "ShowcaseLayout "
 private const val INDEX_RESET_DELAY = 250L
+private const val TARGET_TAP_TOLERANCE_PX = 16f
 
 /**
  * ShowcaseLayout
@@ -71,6 +73,7 @@ private const val INDEX_RESET_DELAY = 250L
  * @param lineThickness thickness of the arrow line in dp.
  * @param targetShape the shape of the target highlight (RECTANGLE, CIRCLE, or ROUNDED_RECTANGLE).
  * @param cornerRadius the corner radius for the ROUNDED_RECTANGLE shape in dp.
+ * @param advanceOnTargetTapOnly when true, only taps inside the highlighted target shape advance/dismiss the showcase; taps elsewhere are ignored. The greeting/initial screen always advances on any tap. Defaults to false (tap anywhere).
  * @param colors the colors used to draw the overlay, created with [ShowcaseLayoutDefaults.colors]. Pass a light [ShowcaseLayoutDefaults.Colors.overlayColor] for a dark UI.
  **/
 
@@ -84,6 +87,7 @@ fun ShowcaseLayout(
     lineThickness: Dp = 5.dp,
     targetShape: TargetShape = TargetShape.RECTANGLE,
     cornerRadius: Dp = 16.dp,
+    advanceOnTargetTapOnly: Boolean = false,
     colors: ShowcaseLayoutDefaults.Colors = ShowcaseLayoutDefaults.colors(),
     content: @Composable ShowcaseScope.() -> Unit
 ) {
@@ -258,6 +262,17 @@ fun ShowcaseLayout(
                     .semantics { testTag = "canvas" }
                     .pointerInput(Unit) {
                         detectTapGestures {
+                            /** when enabled, only taps inside the target shape advance the showcase
+                             * (the greeting/initial screen always advances on any tap) */
+                            if (advanceOnTargetTapOnly && currentIndex != 0 && !isSingleGreeting &&
+                                !isTapInsideTarget(it, offset, itemSize, targetShape, TARGET_TAP_TOLERANCE_PX)
+                            ) {
+                                scope.showcaseEventListener?.onEvent(
+                                    Level.VERBOSE,
+                                    TAG + "tap outside target ignored at $it"
+                                )
+                                return@detectTapGestures
+                            }
                             /** detect taps on the screen */
                             coroutineScope.launch {
 
@@ -964,7 +979,7 @@ fun ShowcaseLayout(
     message = "isDarkLayout has been replaced by the colors parameter; pass a light overlay color instead.",
     replaceWith = ReplaceWith(
         "ShowcaseLayout(isShowcasing, initIndex, animationDuration, onFinish, greeting, " +
-                "lineThickness, targetShape, cornerRadius, " +
+                "lineThickness, targetShape, cornerRadius, false, " +
                 "ShowcaseLayoutDefaults.colors(overlayColor = if (isDarkLayout) Color.White.copy(alpha = 0.9f) else Color.Black.copy(alpha = 0.9f)), content)"
     )
 )

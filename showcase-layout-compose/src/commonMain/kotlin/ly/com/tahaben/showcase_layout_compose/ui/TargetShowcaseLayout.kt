@@ -27,6 +27,7 @@ import androidx.compose.ui.unit.dp
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import ly.com.tahaben.showcase_layout_compose.domain.Level
+import ly.com.tahaben.showcase_layout_compose.domain.usecase.isTapInsideTarget
 import ly.com.tahaben.showcase_layout_compose.domain.usecase.validateInitIndex
 import ly.com.tahaben.showcase_layout_compose.model.MsgAnimation
 import ly.com.tahaben.showcase_layout_compose.model.ShowcaseMsg
@@ -54,6 +55,7 @@ import kotlin.math.min
 
 private const val TAG = "TargetShowcaseLayout "
 private const val INDEX_RESET_DELAY = 250L
+private const val TARGET_TAP_TOLERANCE_PX = 16f
 
 /**
  * TargetShowcaseLayout
@@ -68,6 +70,7 @@ private const val INDEX_RESET_DELAY = 250L
  * @param cornerRadius the radius of the corners when targetShape is ROUNDED_RECTANGLE.
  * @param animateToNextTarget if true, the target shape will animate smoothly from one target to the next when the index changes.
  *                           If false, the shape will shrink at the current location, then expand at the new location.
+ * @param advanceOnTargetTapOnly when true, only taps inside the highlighted target shape advance/dismiss the showcase; taps elsewhere are ignored. The greeting/initial screen always advances on any tap. Defaults to false (tap anywhere).
  * @param colors the colors used to draw the overlay and pulse, created with [ShowcaseLayoutDefaults.colors]. Pass a light [ShowcaseLayoutDefaults.Colors.overlayColor] for a dark UI. A per-step [ShowcaseMsg.msgBackground] still takes precedence over [ShowcaseLayoutDefaults.Colors.overlayColor].
  **/
 @Composable
@@ -81,6 +84,7 @@ fun TargetShowcaseLayout(
     targetShape: TargetShape = TargetShape.ROUNDED_RECTANGLE,
     cornerRadius: Dp = 8.dp,
     animateToNextTarget: Boolean = true,
+    advanceOnTargetTapOnly: Boolean = false,
     colors: ShowcaseLayoutDefaults.Colors = ShowcaseLayoutDefaults.colors(),
     content: @Composable ShowcaseScope.() -> Unit
 ) {
@@ -134,6 +138,11 @@ fun TargetShowcaseLayout(
 
             val animatedX = remember { Animatable(offset.x) }
             val animatedY = remember { Animatable(offset.y) }
+            // The tap handler lives in a pointerInput(Unit) that never restarts, so it would
+            // otherwise capture the first composition's (greeting) bounds. Track the current
+            // target's resting bounds in State so the hit-test always reads the live values.
+            val currentTargetTopLeft by rememberUpdatedState(offset)
+            val currentTargetSize by rememberUpdatedState(itemSize)
             val maxDimension =
                 max(maxHeight.value, maxWidth.value)
 
@@ -316,6 +325,23 @@ fun TargetShowcaseLayout(
                                 Level.VERBOSE,
                                 TAG + "tapped here $it"
                             )
+                            /** when enabled, only taps inside the target shape advance the showcase
+                             * (the greeting/initial screen always advances on any tap) */
+                            if (advanceOnTargetTapOnly && currentIndex != 0 && !isSingleGreeting &&
+                                !isTapInsideTarget(
+                                    it,
+                                    currentTargetTopLeft,
+                                    currentTargetSize,
+                                    targetShape,
+                                    TARGET_TAP_TOLERANCE_PX
+                                )
+                            ) {
+                                scope.showcaseEventListener?.onEvent(
+                                    Level.VERBOSE,
+                                    TAG + "tap outside target ignored at $it"
+                                )
+                                return@detectTapGestures
+                            }
                             if (showCasingItem) {
                                 val shrinkDuration = animationDuration
 
@@ -1127,7 +1153,7 @@ fun TargetShowcaseLayout(
     message = "isDarkLayout has been replaced by the colors parameter; pass a light overlay color instead.",
     replaceWith = ReplaceWith(
         "TargetShowcaseLayout(isShowcasing, initIndex, animationDuration, onFinish, greeting, " +
-                "lineThickness, targetShape, cornerRadius, animateToNextTarget, " +
+                "lineThickness, targetShape, cornerRadius, animateToNextTarget, false, " +
                 "ShowcaseLayoutDefaults.colors(overlayColor = if (isDarkLayout) Color.White.copy(alpha = 0.9f) else Color.Black.copy(alpha = 0.9f)), content)"
     )
 )
