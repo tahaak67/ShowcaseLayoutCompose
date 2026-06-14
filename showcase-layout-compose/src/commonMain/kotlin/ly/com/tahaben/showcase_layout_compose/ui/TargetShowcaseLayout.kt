@@ -59,7 +59,6 @@ private const val INDEX_RESET_DELAY = 250L
  * TargetShowcaseLayout
  *
  * @param isShowcasing to determine if showcase is starting or not.
- * @param isDarkLayout if true the showcase view will be white instead of black.
  * @param initIndex the initial value of counter, set this to 1 if you don't want a greeting screen before showcasing target.
  * @param animationDuration total animation time taken when switching from current to next target in milliseconds.
  * @param onFinish what happens when all items are showcased.
@@ -69,11 +68,11 @@ private const val INDEX_RESET_DELAY = 250L
  * @param cornerRadius the radius of the corners when targetShape is ROUNDED_RECTANGLE.
  * @param animateToNextTarget if true, the target shape will animate smoothly from one target to the next when the index changes.
  *                           If false, the shape will shrink at the current location, then expand at the new location.
+ * @param colors the colors used to draw the overlay and pulse, created with [ShowcaseLayoutDefaults.colors]. Pass a light [ShowcaseLayoutDefaults.Colors.overlayColor] for a dark UI. A per-step [ShowcaseMsg.msgBackground] still takes precedence over [ShowcaseLayoutDefaults.Colors.overlayColor].
  **/
 @Composable
 fun TargetShowcaseLayout(
     isShowcasing: Boolean,
-    isDarkLayout: Boolean = false,
     initIndex: Int = 0,
     animationDuration: Int = 1000,
     onFinish: () -> Unit,
@@ -82,6 +81,7 @@ fun TargetShowcaseLayout(
     targetShape: TargetShape = TargetShape.ROUNDED_RECTANGLE,
     cornerRadius: Dp = 8.dp,
     animateToNextTarget: Boolean = true,
+    colors: ShowcaseLayoutDefaults.Colors = ShowcaseLayoutDefaults.colors(),
     content: @Composable ShowcaseScope.() -> Unit
 ) {
     val validatedInitIndex = remember(initIndex, greeting) { validateInitIndex(initIndex, greeting) }
@@ -142,7 +142,7 @@ fun TargetShowcaseLayout(
             var message =  if (isSingleGreeting) singleGreetingMsg else scope.getMessageFor(currentIndex)
             val textMeasurer = rememberTextMeasurer()
             val messageTextAlpha = remember { Animatable(0f) }
-            var canvasColor =  message?.msgBackground ?: Color.Black.copy(alpha = 0.9f)
+            var canvasColor =  message?.msgBackground ?: colors.overlayColor
             val canvasColorAnimated by animateColorAsState(
                 canvasColor,
                 animationSpec = tween(durationMillis = animationDuration, easing = FastOutSlowInEasing)
@@ -204,8 +204,7 @@ fun TargetShowcaseLayout(
                     animatedX.snapTo(offset.x)
                     animatedY.snapTo(offset.y)
                     message = scope.getMessageFor(currentIndex)
-                    canvasColor =  message?.msgBackground ?: Color.Black.copy(alpha = 0.9f)
-                    println("canvas color: $canvasColor")
+                    canvasColor =  message?.msgBackground ?: colors.overlayColor
                     delay(animationDuration.toLong())
                     handleMessageEnterAnimation(message, messageTextAlpha, animationDuration)
                     outerAnimatable.animateTo(
@@ -458,10 +457,13 @@ fun TargetShowcaseLayout(
                         }
                     }
             ) {
+                // The per-step msgBackground keeps its historical fixed 0.9 alpha; a layout-wide
+                // overlayColor honors its own alpha so developers can control transparency.
+                val overlayBaseAlpha = if (message?.msgBackground != null) 0.9f else colors.overlayColor.alpha
                 if (isSingleGreeting || currentIndex == 0) {
                     // For greeting, fill the entire screen with a solid color
                     drawRect(
-                        color = canvasColor.copy(alpha = 0.9f),
+                        color = canvasColor.copy(alpha = overlayBaseAlpha),
                         size = size,
                         alpha = canvasAlpha.value
                     )
@@ -740,13 +742,13 @@ fun TargetShowcaseLayout(
                 if (currentIndex == validatedInitIndex){
                     drawPath(
                         path = donutPath,
-                        color = canvasColor.copy(alpha = 0.9f * canvasAlpha.value),
+                        color = canvasColor.copy(alpha = overlayBaseAlpha * canvasAlpha.value),
                         style = Fill // Fill the donut shape
                     )
                 }else{
                     drawPath(
                         path = donutPath,
-                        color = canvasColorAnimated.copy(alpha = 0.9f * canvasAlpha.value),
+                        color = canvasColorAnimated.copy(alpha = overlayBaseAlpha * canvasAlpha.value),
                         style = Fill // Fill the donut shape
                     )
                 }
@@ -957,7 +959,7 @@ fun TargetShowcaseLayout(
                 // Apply canvasAlpha to make the pulse animation also disappear during transitions
                 drawPath(
                     path = pulsePath,
-                    color = Color.White.copy(alpha = pulseAlpha.value * canvasAlpha.value),
+                    color = colors.pulseColor.copy(alpha = colors.pulseColor.alpha * pulseAlpha.value * canvasAlpha.value),
                     style = Fill
                 )
 
@@ -1113,6 +1115,51 @@ fun TargetShowcaseLayout(
             }
         }
     }
+}
+
+/**
+ * Backwards-compatible overload that keeps the [isDarkLayout] flag working.
+ *
+ * @deprecated [isDarkLayout] has been replaced by [colors]. Pass a light overlay color via
+ * [ShowcaseLayoutDefaults.colors] instead, e.g. `colors = ShowcaseLayoutDefaults.colors(overlayColor = Color.White.copy(alpha = 0.9f))`.
+ */
+@Deprecated(
+    message = "isDarkLayout has been replaced by the colors parameter; pass a light overlay color instead.",
+    replaceWith = ReplaceWith(
+        "TargetShowcaseLayout(isShowcasing, initIndex, animationDuration, onFinish, greeting, " +
+                "lineThickness, targetShape, cornerRadius, animateToNextTarget, " +
+                "ShowcaseLayoutDefaults.colors(overlayColor = if (isDarkLayout) Color.White.copy(alpha = 0.9f) else Color.Black.copy(alpha = 0.9f)), content)"
+    )
+)
+@Composable
+fun TargetShowcaseLayout(
+    isShowcasing: Boolean,
+    isDarkLayout: Boolean,
+    initIndex: Int = 0,
+    animationDuration: Int = 1000,
+    onFinish: () -> Unit,
+    greeting: ShowcaseMsg? = null,
+    lineThickness: Dp = 5.dp,
+    targetShape: TargetShape = TargetShape.ROUNDED_RECTANGLE,
+    cornerRadius: Dp = 8.dp,
+    animateToNextTarget: Boolean = true,
+    content: @Composable ShowcaseScope.() -> Unit
+) {
+    TargetShowcaseLayout(
+        isShowcasing = isShowcasing,
+        initIndex = initIndex,
+        animationDuration = animationDuration,
+        onFinish = onFinish,
+        greeting = greeting,
+        lineThickness = lineThickness,
+        targetShape = targetShape,
+        cornerRadius = cornerRadius,
+        animateToNextTarget = animateToNextTarget,
+        colors = ShowcaseLayoutDefaults.colors(
+            overlayColor = if (isDarkLayout) Color.White.copy(alpha = 0.9f) else Color.Black.copy(alpha = 0.9f)
+        ),
+        content = content
+    )
 }
 
 suspend fun handleMessageExitAnimation(

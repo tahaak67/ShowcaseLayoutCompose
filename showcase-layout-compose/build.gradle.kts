@@ -70,7 +70,7 @@ mavenPublishing {
     publishToMavenCentral()
     signAllPublications()
 
-    coordinates("ly.com.tahaben", "showcase-layout-compose", "1.0.10")
+    coordinates("ly.com.tahaben", "showcase-layout-compose", "1.1.0")
 
     pom {
         name.set("Showcase Layout Compose")

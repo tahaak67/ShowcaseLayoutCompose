@@ -28,7 +28,7 @@ import androidx.compose.ui.unit.dp
  *
  * @param text the text of the message.
  * @param textStyle text style.
- * @param msgBackground background color for the text, default is Transparent.
+ * @param msgBackground background color for the text, default is Transparent. Note: in `TargetShowcaseLayout` this also acts as the overlay color for this step and takes precedence over `ShowcaseLayoutDefaults.Colors.overlayColor`.
  * @param roundedCorner the corner radius value in dp.
  * @param gravity display the message below or on top of target.
  * @param arrow add an arrow.

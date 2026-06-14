@@ -206,7 +206,7 @@ In addition to the parameters shared with ShowcaseLayout, TargetShowcaseLayout o
 TargetShowcaseLayout(
     // Common parameters (same as ShowcaseLayout)
     isShowcasing = isShowcasing,
-    isDarkLayout = false,
+    colors = ShowcaseLayoutDefaults.colors(),
     initIndex = 0,
     animationDuration = 1000,
     onFinish = { isShowcasing = false },
@@ -230,21 +230,32 @@ TargetShowcaseLayout(
 
 #### Additional parameters
 
-#### isDarkLayout
+#### colors
 
-Makes the showcase view white instead of black (useful for dark UI).
+Controls the color and alpha of the dimming overlay (and, for `TargetShowcaseLayout`, the color of
+the pulsing ring). Build a `ShowcaseLayoutDefaults.Colors` with `ShowcaseLayoutDefaults.colors(...)`.
+The overlay color's own alpha is honored, so you have full control over transparency. The default is
+`Color.Black.copy(alpha = 0.9f)`; for a dark UI, pass a light overlay color.
 
 ```kotlin
 ShowcaseLayout(
     isShowcasing = isShowcasing,
     onFinish = { isShowcasing = false },
-    isDarkLayout = isSystemInDarkTheme()
+    colors = ShowcaseLayoutDefaults.colors(
+        overlayColor = Color.White.copy(alpha = 0.9f), // light overlay for a dark UI
+        pulseColor = Color.White                       // TargetShowcaseLayout only
+    )
 )
 ```
 
+> **Migrating from `isDarkLayout`:** the `isDarkLayout` parameter is deprecated and will be removed in
+> a future release. Replace `isDarkLayout = true` with
+> `colors = ShowcaseLayoutDefaults.colors(overlayColor = Color.White.copy(alpha = 0.9f))`. Leaving
+> `colors` at its default reproduces the previous `isDarkLayout = false` look.
+
 <p align="center">
-isDarkLayout = true <br/>
-    <img src="metadata/screenshots/screenshot-4.png" alt="Screenshot" height="530"  width="250" /> <img src="metadata/screenshots/screenshot-5.png" alt="Dark layout example 1"  height="530" width="250" />
+overlayColor = Color.White.copy(alpha = 0.9f) <br/>
+    <img src="metadata/screenshots/screenshot-4.png" alt="Screenshot" height="530"  width="250" /> <img src="metadata/screenshots/screenshot-5.png" alt="Light overlay example"  height="530" width="250" />
 </p>
 
 #### greeting
@@ -256,7 +267,6 @@ A customizable greeting message of type `showcaseMsg()`
 ShowcaseLayout(
     isShowcasing = isShowcasing,
     onFinish = { isShowcasing = false },
-    isDarkLayout = isSystemInDarkTheme(),
     greeting = ShowcaseMsg(
         "Welcome to my app, lets take you on a quick tour!, tap anywhere to continue",
         textStyle = TextStyle(color = Color.White)
@@ -293,7 +303,6 @@ total animation time taken when switching from current to next target in millise
 ShowcaseLayout(
     isShowcasing = isShowcasing,
     onFinish = { isShowcasing = false },
-    isDarkLayout = isSystemInDarkTheme(),
     greeting = ShowcaseMsg(
         text = greetingString, // You can use an annotated string or a normal string here
         textStyle = TextStyle(color = Color.White, textAlign = TextAlign.Center)

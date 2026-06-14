@@ -64,7 +64,6 @@ private const val INDEX_RESET_DELAY = 250L
  * ShowcaseLayout
  *
  * @param isShowcasing to determine if showcase is starting or not.
- * @param isDarkLayout if true the showcase view will be white instead of black.
  * @param initIndex the initial value of counter, set this to 1 if you don't want a greeting screen before showcasing target.
  * @param animationDuration total animation time taken when switching from current to next target in milliseconds.
  * @param onFinish what happens when all items are showcased.
@@ -72,12 +71,12 @@ private const val INDEX_RESET_DELAY = 250L
  * @param lineThickness thickness of the arrow line in dp.
  * @param targetShape the shape of the target highlight (RECTANGLE, CIRCLE, or ROUNDED_RECTANGLE).
  * @param cornerRadius the corner radius for the ROUNDED_RECTANGLE shape in dp.
+ * @param colors the colors used to draw the overlay, created with [ShowcaseLayoutDefaults.colors]. Pass a light [ShowcaseLayoutDefaults.Colors.overlayColor] for a dark UI.
  **/
 
 @Composable
 fun ShowcaseLayout(
     isShowcasing: Boolean,
-    isDarkLayout: Boolean = false,
     initIndex: Int = 0,
     animationDuration: Int = 1000,
     onFinish: () -> Unit,
@@ -85,6 +84,7 @@ fun ShowcaseLayout(
     lineThickness: Dp = 5.dp,
     targetShape: TargetShape = TargetShape.RECTANGLE,
     cornerRadius: Dp = 16.dp,
+    colors: ShowcaseLayoutDefaults.Colors = ShowcaseLayoutDefaults.colors(),
     content: @Composable ShowcaseScope.() -> Unit
 ) {
     val validatedInitIndex = remember(initIndex, greeting) { validateInitIndex(initIndex, greeting) }
@@ -351,7 +351,7 @@ fun ShowcaseLayout(
                     if (currentIndex == 0 || isSingleGreeting) {
                         // Draw a full canvas without any cutout for greeting or index 0
                         drawRect(
-                            color = if (isDarkLayout) Color.White.copy(alpha = 0.9f * canvasAlpha.value) else Color.Black.copy(alpha = 0.9f * canvasAlpha.value),
+                            color = colors.overlayColor.copy(alpha = colors.overlayColor.alpha * canvasAlpha.value),
                             size = size
                         )
                     } else {
@@ -382,7 +382,7 @@ fun ShowcaseLayout(
                                 /** draw the showcasePath */
                                 drawPath(
                                     path = showcasePath,
-                                    color = if (isDarkLayout) Color.White.copy(alpha = 0.9f * canvasAlpha.value) else Color.Black.copy(alpha = 0.9f * canvasAlpha.value),
+                                    color = colors.overlayColor.copy(alpha = colors.overlayColor.alpha * canvasAlpha.value),
                                 )
                             }
 
@@ -419,7 +419,7 @@ fun ShowcaseLayout(
                                 // Draw the path
                                 drawPath(
                                     path = showcasePath,
-                                    color = if (isDarkLayout) Color.White.copy(alpha = 0.9f * canvasAlpha.value) else Color.Black.copy(alpha = 0.9f * canvasAlpha.value),
+                                    color = colors.overlayColor.copy(alpha = colors.overlayColor.alpha * canvasAlpha.value),
                                 )
                             }
 
@@ -503,7 +503,7 @@ fun ShowcaseLayout(
                                 // Draw the path
                                 drawPath(
                                     path = showcasePath,
-                                    color = if (isDarkLayout) Color.White.copy(alpha = 0.9f * canvasAlpha.value) else Color.Black.copy(alpha = 0.9f * canvasAlpha.value),
+                                    color = colors.overlayColor.copy(alpha = colors.overlayColor.alpha * canvasAlpha.value),
                                 )
                             }
                         }
@@ -952,6 +952,49 @@ fun ShowcaseLayout(
         }
 
     }
+}
+
+/**
+ * Backwards-compatible overload that keeps the [isDarkLayout] flag working.
+ *
+ * @deprecated [isDarkLayout] has been replaced by [colors]. Pass a light overlay color via
+ * [ShowcaseLayoutDefaults.colors] instead, e.g. `colors = ShowcaseLayoutDefaults.colors(overlayColor = Color.White.copy(alpha = 0.9f))`.
+ */
+@Deprecated(
+    message = "isDarkLayout has been replaced by the colors parameter; pass a light overlay color instead.",
+    replaceWith = ReplaceWith(
+        "ShowcaseLayout(isShowcasing, initIndex, animationDuration, onFinish, greeting, " +
+                "lineThickness, targetShape, cornerRadius, " +
+                "ShowcaseLayoutDefaults.colors(overlayColor = if (isDarkLayout) Color.White.copy(alpha = 0.9f) else Color.Black.copy(alpha = 0.9f)), content)"
+    )
+)
+@Composable
+fun ShowcaseLayout(
+    isShowcasing: Boolean,
+    isDarkLayout: Boolean,
+    initIndex: Int = 0,
+    animationDuration: Int = 1000,
+    onFinish: () -> Unit,
+    greeting: ShowcaseMsg? = null,
+    lineThickness: Dp = 5.dp,
+    targetShape: TargetShape = TargetShape.RECTANGLE,
+    cornerRadius: Dp = 16.dp,
+    content: @Composable ShowcaseScope.() -> Unit
+) {
+    ShowcaseLayout(
+        isShowcasing = isShowcasing,
+        initIndex = initIndex,
+        animationDuration = animationDuration,
+        onFinish = onFinish,
+        greeting = greeting,
+        lineThickness = lineThickness,
+        targetShape = targetShape,
+        cornerRadius = cornerRadius,
+        colors = ShowcaseLayoutDefaults.colors(
+            overlayColor = if (isDarkLayout) Color.White.copy(alpha = 0.9f) else Color.Black.copy(alpha = 0.9f)
+        ),
+        content = content
+    )
 }
 
 class ShowcaseScopeImpl(greeting: ShowcaseMsg?) : ShowcaseScope {
