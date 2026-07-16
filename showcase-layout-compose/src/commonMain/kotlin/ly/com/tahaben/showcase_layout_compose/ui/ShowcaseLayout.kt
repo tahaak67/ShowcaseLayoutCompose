@@ -19,6 +19,7 @@ import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.graphics.drawscope.rotate
 import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.ui.layout.LayoutCoordinates
 import androidx.compose.ui.layout.onGloballyPositioned
 import androidx.compose.ui.layout.positionInRoot
 import androidx.compose.ui.platform.LocalDensity
@@ -97,7 +98,9 @@ fun ShowcaseLayout(
     }
     val currentContent by rememberUpdatedState(content)
     val resetDelay by derivedStateOf { animationDuration.toLong() + INDEX_RESET_DELAY }
+    val layoutCoordinatesState = remember { mutableStateOf<LayoutCoordinates?>(null) }
     val scope = ShowcaseScopeImpl(greeting)
+    scope.layoutCoordinatesState = layoutCoordinatesState
     scope.currentContent()
 
     var singleGreetingMsg by remember { mutableStateOf<ShowcaseMsg?>(null) }
@@ -133,7 +136,10 @@ fun ShowcaseLayout(
         }
     }
 
-    BoxWithConstraints(modifier = Modifier.fillMaxSize()) {
+    BoxWithConstraints(modifier = Modifier
+        .fillMaxSize()
+        .onGloballyPositioned { layoutCoordinatesState.value = it }
+    ) {
         val coroutineScope = rememberCoroutineScope()
         if (isShowcasing || showCasingItem || isSingleGreeting) {
             val offset by animateOffsetAsState(
@@ -1014,6 +1020,10 @@ fun ShowcaseLayout(
 
 class ShowcaseScopeImpl(greeting: ShowcaseMsg?) : ShowcaseScope {
     private val showcaseDataHashMap = HashMap<Int, ShowcaseData>()
+
+    /** Coordinates of the showcase layout itself, used to convert target positions from
+     * root space to the layout's local space (the space the overlay canvas draws in). */
+    internal var layoutCoordinatesState: State<LayoutCoordinates?> = mutableStateOf(null)
     override var showcaseEventListener: ShowcaseEventListener? = null
     private val _showcaseActionFlow = MutableStateFlow<Int?>(null)
     val showcaseActionFlow = _showcaseActionFlow.asStateFlow()
@@ -1108,11 +1118,22 @@ class ShowcaseScopeImpl(greeting: ShowcaseMsg?) : ShowcaseScope {
     }
 
     fun getPositionFor(index: Int): Offset {
-        if (index == 0) {
-            return showcaseDataHashMap[1]?.position ?: Offset(0f, 0f)
+        val data = showcaseDataHashMap[if (index == 0) 1 else index] ?: return Offset(0f, 0f)
+        return positionInLayout(data)
+    }
+
+    /** The stored position is relative to the composition root, but the overlay canvas draws
+     * in the layout's local space. When the layout doesn't sit at the root origin (status bar
+     * padding, app bars, ...) the two spaces differ, so convert; the raw root position is only
+     * a fallback for when either set of coordinates is detached. */
+    private fun positionInLayout(data: ShowcaseData): Offset {
+        val layoutCoordinates = layoutCoordinatesState.value
+        val targetCoordinates = data.coordinates
+        return if (layoutCoordinates?.isAttached == true && targetCoordinates?.isAttached == true) {
+            layoutCoordinates.localPositionOf(targetCoordinates, Offset.Zero)
+        } else {
+            data.position
         }
-        val p = showcaseDataHashMap[index]?.position ?: Offset(0f, 0f)
-        return p
     }
 
     fun getHashMapSize(): Int {

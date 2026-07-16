@@ -14,6 +14,8 @@ import androidx.compose.ui.graphics.Path
 import androidx.compose.ui.graphics.PathOperation
 import androidx.compose.ui.graphics.drawscope.Fill
 import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.ui.layout.LayoutCoordinates
+import androidx.compose.ui.layout.onGloballyPositioned
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.semantics.testTag
@@ -93,7 +95,9 @@ fun TargetShowcaseLayout(
         mutableIntStateOf(validatedInitIndex)
     }
     val currentContent by rememberUpdatedState(content)
+    val layoutCoordinatesState = remember { mutableStateOf<LayoutCoordinates?>(null) }
     val scope = ShowcaseScopeImpl(greeting)
+    scope.layoutCoordinatesState = layoutCoordinatesState
     scope.currentContent()
     val localDensity = LocalDensity.current
     var singleGreetingMsg by remember { mutableStateOf<ShowcaseMsg?>(null) }
@@ -128,7 +132,10 @@ fun TargetShowcaseLayout(
         }
     }
 
-    BoxWithConstraints(modifier = Modifier.fillMaxSize()) {
+    BoxWithConstraints(modifier = Modifier
+        .fillMaxSize()
+        .onGloballyPositioned { layoutCoordinatesState.value = it }
+    ) {
         val coroutineScope = rememberCoroutineScope()
         if (isShowcasing || showCasingItem || isSingleGreeting) {
             var itemSize = scope.getSizeFor(currentIndex)
