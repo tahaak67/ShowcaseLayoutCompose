@@ -19,6 +19,7 @@ import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.graphics.drawscope.rotate
 import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.ui.layout.LayoutCoordinates
 import androidx.compose.ui.layout.onGloballyPositioned
 import androidx.compose.ui.layout.positionInRoot
 import androidx.compose.ui.platform.LocalDensity
@@ -34,6 +35,7 @@ import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
 import ly.com.tahaben.showcase_layout_compose.domain.Level
 import ly.com.tahaben.showcase_layout_compose.domain.ShowcaseEventListener
+import ly.com.tahaben.showcase_layout_compose.domain.usecase.isTapInsideTarget
 import ly.com.tahaben.showcase_layout_compose.domain.usecase.validateInitIndex
 import ly.com.tahaben.showcase_layout_compose.model.*
 import kotlin.math.PI
@@ -59,12 +61,12 @@ import kotlin.math.max
 
 private const val TAG = "ShowcaseLayout "
 private const val INDEX_RESET_DELAY = 250L
+private const val TARGET_TAP_TOLERANCE_PX = 16f
 
 /**
  * ShowcaseLayout
  *
  * @param isShowcasing to determine if showcase is starting or not.
- * @param isDarkLayout if true the showcase view will be white instead of black.
  * @param initIndex the initial value of counter, set this to 1 if you don't want a greeting screen before showcasing target.
  * @param animationDuration total animation time taken when switching from current to next target in milliseconds.
  * @param onFinish what happens when all items are showcased.
@@ -72,12 +74,13 @@ private const val INDEX_RESET_DELAY = 250L
  * @param lineThickness thickness of the arrow line in dp.
  * @param targetShape the shape of the target highlight (RECTANGLE, CIRCLE, or ROUNDED_RECTANGLE).
  * @param cornerRadius the corner radius for the ROUNDED_RECTANGLE shape in dp.
+ * @param advanceOnTargetTapOnly when true, only taps inside the highlighted target shape advance/dismiss the showcase; taps elsewhere are ignored. The greeting/initial screen always advances on any tap. Defaults to false (tap anywhere).
+ * @param colors the colors used to draw the overlay, created with [ShowcaseLayoutDefaults.colors]. Pass a light [ShowcaseLayoutDefaults.Colors.overlayColor] for a dark UI.
  **/
 
 @Composable
 fun ShowcaseLayout(
     isShowcasing: Boolean,
-    isDarkLayout: Boolean = false,
     initIndex: Int = 0,
     animationDuration: Int = 1000,
     onFinish: () -> Unit,
@@ -85,6 +88,8 @@ fun ShowcaseLayout(
     lineThickness: Dp = 5.dp,
     targetShape: TargetShape = TargetShape.RECTANGLE,
     cornerRadius: Dp = 16.dp,
+    advanceOnTargetTapOnly: Boolean = false,
+    colors: ShowcaseLayoutDefaults.Colors = ShowcaseLayoutDefaults.colors(),
     content: @Composable ShowcaseScope.() -> Unit
 ) {
     val validatedInitIndex = remember(initIndex, greeting) { validateInitIndex(initIndex, greeting) }
@@ -93,7 +98,9 @@ fun ShowcaseLayout(
     }
     val currentContent by rememberUpdatedState(content)
     val resetDelay by derivedStateOf { animationDuration.toLong() + INDEX_RESET_DELAY }
+    val layoutCoordinatesState = remember { mutableStateOf<LayoutCoordinates?>(null) }
     val scope = ShowcaseScopeImpl(greeting)
+    scope.layoutCoordinatesState = layoutCoordinatesState
     scope.currentContent()
 
     var singleGreetingMsg by remember { mutableStateOf<ShowcaseMsg?>(null) }
@@ -129,7 +136,10 @@ fun ShowcaseLayout(
         }
     }
 
-    BoxWithConstraints(modifier = Modifier.fillMaxSize()) {
+    BoxWithConstraints(modifier = Modifier
+        .fillMaxSize()
+        .onGloballyPositioned { layoutCoordinatesState.value = it }
+    ) {
         val coroutineScope = rememberCoroutineScope()
         if (isShowcasing || showCasingItem || isSingleGreeting) {
             val offset by animateOffsetAsState(
@@ -258,6 +268,17 @@ fun ShowcaseLayout(
                     .semantics { testTag = "canvas" }
                     .pointerInput(Unit) {
                         detectTapGestures {
+                            /** when enabled, only taps inside the target shape advance the showcase
+                             * (the greeting/initial screen always advances on any tap) */
+                            if (advanceOnTargetTapOnly && currentIndex != 0 && !isSingleGreeting &&
+                                !isTapInsideTarget(it, offset, itemSize, targetShape, TARGET_TAP_TOLERANCE_PX)
+                            ) {
+                                scope.showcaseEventListener?.onEvent(
+                                    Level.VERBOSE,
+                                    TAG + "tap outside target ignored at $it"
+                                )
+                                return@detectTapGestures
+                            }
                             /** detect taps on the screen */
                             coroutineScope.launch {
 
@@ -351,7 +372,7 @@ fun ShowcaseLayout(
                     if (currentIndex == 0 || isSingleGreeting) {
                         // Draw a full canvas without any cutout for greeting or index 0
                         drawRect(
-                            color = if (isDarkLayout) Color.White.copy(alpha = 0.9f * canvasAlpha.value) else Color.Black.copy(alpha = 0.9f * canvasAlpha.value),
+                            color = colors.overlayColor.copy(alpha = colors.overlayColor.alpha * canvasAlpha.value),
                             size = size
                         )
                     } else {
@@ -382,7 +403,7 @@ fun ShowcaseLayout(
                                 /** draw the showcasePath */
                                 drawPath(
                                     path = showcasePath,
-                                    color = if (isDarkLayout) Color.White.copy(alpha = 0.9f * canvasAlpha.value) else Color.Black.copy(alpha = 0.9f * canvasAlpha.value),
+                                    color = colors.overlayColor.copy(alpha = colors.overlayColor.alpha * canvasAlpha.value),
                                 )
                             }
 
@@ -419,7 +440,7 @@ fun ShowcaseLayout(
                                 // Draw the path
                                 drawPath(
                                     path = showcasePath,
-                                    color = if (isDarkLayout) Color.White.copy(alpha = 0.9f * canvasAlpha.value) else Color.Black.copy(alpha = 0.9f * canvasAlpha.value),
+                                    color = colors.overlayColor.copy(alpha = colors.overlayColor.alpha * canvasAlpha.value),
                                 )
                             }
 
@@ -503,7 +524,7 @@ fun ShowcaseLayout(
                                 // Draw the path
                                 drawPath(
                                     path = showcasePath,
-                                    color = if (isDarkLayout) Color.White.copy(alpha = 0.9f * canvasAlpha.value) else Color.Black.copy(alpha = 0.9f * canvasAlpha.value),
+                                    color = colors.overlayColor.copy(alpha = colors.overlayColor.alpha * canvasAlpha.value),
                                 )
                             }
                         }
@@ -954,8 +975,55 @@ fun ShowcaseLayout(
     }
 }
 
+/**
+ * Backwards-compatible overload that keeps the [isDarkLayout] flag working.
+ *
+ * @deprecated [isDarkLayout] has been replaced by [colors]. Pass a light overlay color via
+ * [ShowcaseLayoutDefaults.colors] instead, e.g. `colors = ShowcaseLayoutDefaults.colors(overlayColor = Color.White.copy(alpha = 0.9f))`.
+ */
+@Deprecated(
+    message = "isDarkLayout has been replaced by the colors parameter; pass a light overlay color instead.",
+    replaceWith = ReplaceWith(
+        "ShowcaseLayout(isShowcasing, initIndex, animationDuration, onFinish, greeting, " +
+                "lineThickness, targetShape, cornerRadius, false, " +
+                "ShowcaseLayoutDefaults.colors(overlayColor = if (isDarkLayout) Color.White.copy(alpha = 0.9f) else Color.Black.copy(alpha = 0.9f)), content)"
+    )
+)
+@Composable
+fun ShowcaseLayout(
+    isShowcasing: Boolean,
+    isDarkLayout: Boolean,
+    initIndex: Int = 0,
+    animationDuration: Int = 1000,
+    onFinish: () -> Unit,
+    greeting: ShowcaseMsg? = null,
+    lineThickness: Dp = 5.dp,
+    targetShape: TargetShape = TargetShape.RECTANGLE,
+    cornerRadius: Dp = 16.dp,
+    content: @Composable ShowcaseScope.() -> Unit
+) {
+    ShowcaseLayout(
+        isShowcasing = isShowcasing,
+        initIndex = initIndex,
+        animationDuration = animationDuration,
+        onFinish = onFinish,
+        greeting = greeting,
+        lineThickness = lineThickness,
+        targetShape = targetShape,
+        cornerRadius = cornerRadius,
+        colors = ShowcaseLayoutDefaults.colors(
+            overlayColor = if (isDarkLayout) Color.White.copy(alpha = 0.9f) else Color.Black.copy(alpha = 0.9f)
+        ),
+        content = content
+    )
+}
+
 class ShowcaseScopeImpl(greeting: ShowcaseMsg?) : ShowcaseScope {
     private val showcaseDataHashMap = HashMap<Int, ShowcaseData>()
+
+    /** Coordinates of the showcase layout itself, used to convert target positions from
+     * root space to the layout's local space (the space the overlay canvas draws in). */
+    internal var layoutCoordinatesState: State<LayoutCoordinates?> = mutableStateOf(null)
     override var showcaseEventListener: ShowcaseEventListener? = null
     private val _showcaseActionFlow = MutableStateFlow<Int?>(null)
     val showcaseActionFlow = _showcaseActionFlow.asStateFlow()
@@ -1050,11 +1118,22 @@ class ShowcaseScopeImpl(greeting: ShowcaseMsg?) : ShowcaseScope {
     }
 
     fun getPositionFor(index: Int): Offset {
-        if (index == 0) {
-            return showcaseDataHashMap[1]?.position ?: Offset(0f, 0f)
+        val data = showcaseDataHashMap[if (index == 0) 1 else index] ?: return Offset(0f, 0f)
+        return positionInLayout(data)
+    }
+
+    /** The stored position is relative to the composition root, but the overlay canvas draws
+     * in the layout's local space. When the layout doesn't sit at the root origin (status bar
+     * padding, app bars, ...) the two spaces differ, so convert; the raw root position is only
+     * a fallback for when either set of coordinates is detached. */
+    private fun positionInLayout(data: ShowcaseData): Offset {
+        val layoutCoordinates = layoutCoordinatesState.value
+        val targetCoordinates = data.coordinates
+        return if (layoutCoordinates?.isAttached == true && targetCoordinates?.isAttached == true) {
+            layoutCoordinates.localPositionOf(targetCoordinates, Offset.Zero)
+        } else {
+            data.position
         }
-        val p = showcaseDataHashMap[index]?.position ?: Offset(0f, 0f)
-        return p
     }
 
     fun getHashMapSize(): Int {

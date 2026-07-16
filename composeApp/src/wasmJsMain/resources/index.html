@@ -4,6 +4,19 @@
     <meta charset="UTF-8">
     <title>Showcase Layout Compose Demo</title>
     <style>
+        html, body {
+            width: 100%;
+            height: 100%;
+            margin: 0;
+            padding: 0;
+            overflow: hidden;
+        }
+
+        #ComposeTarget {
+            width: 100%;
+            height: 100%;
+        }
+
         #loading-indicator {
             display: flex;
             justify-content: center;
@@ -35,7 +48,6 @@
             }
         }
     </style>
-    <script type="application/javascript" src="skiko.js"></script>
     <script type="application/javascript" src="composeApp.js"></script>
 </head>
 <body>
@@ -43,7 +55,7 @@
     <!-- Circular loading spinner -->
     <div class="spinner"></div>
 </div>
-<canvas id="ComposeTarget"></canvas>
+<div id="ComposeTarget"></div>
 <script src="util.js"></script>
 <script>
     document.addEventListener("app-loaded", function() {

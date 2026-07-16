@@ -1,3 +1,5 @@
+import nl.littlerobots.vcu.plugin.resolver.VersionSelectors
+
 buildscript {
     repositories {
         mavenCentral()
@@ -13,7 +15,14 @@ plugins {
     alias(libs.plugins.compose.compiler) apply false
     alias(libs.plugins.kotlinMultiplatform) apply false
     alias(libs.plugins.jetbrainsKotlinAndroid) apply false
-    alias(libs.plugins.nexusPublishing)
+    alias(libs.plugins.versionCatalogUpdate)
 }
 
-apply("${rootDir}/scripts/publish-root.gradle")
+versionCatalogUpdate {
+
+    versionSelector(VersionSelectors.PREFER_STABLE)
+
+    keep {
+        keepUnusedVersions.set(true)
+    }
+}

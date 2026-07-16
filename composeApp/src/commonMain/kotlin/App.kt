@@ -31,12 +31,10 @@ import ly.com.tahaben.showcase_layout_compose.domain.ShowcaseEventListener
 import ly.com.tahaben.showcase_layout_compose.model.*
 import org.jetbrains.compose.resources.ExperimentalResourceApi
 import org.jetbrains.compose.resources.painterResource
-import org.jetbrains.compose.ui.tooling.preview.Preview
 import showcase_layout_compose_kmp.composeapp.generated.resources.*
 import kotlin.math.roundToInt
 
 @OptIn(ExperimentalResourceApi::class, ExperimentalMaterial3Api::class)
-@Preview
 @Composable
 fun App(openUrl: (String) -> Boolean, onWebLoadFinish: () -> Unit = {}) {
     LaunchedEffect(key1 = Unit, block = { onWebLoadFinish() })
@@ -92,6 +90,7 @@ fun App(openUrl: (String) -> Boolean, onWebLoadFinish: () -> Unit = {}) {
     var durationSliderValue by remember { mutableStateOf(500) }
     var animationDuration by remember { mutableStateOf(500) }
     var animateToNextTarget by remember { mutableStateOf(true) }
+    var advanceOnTargetTapOnly by remember { mutableStateOf(true) }
     var targetShape by remember { mutableStateOf(TargetShape.CIRCLE) }
     val targetShapeName by derivedStateOf {
         when(targetShape){
@@ -120,7 +119,8 @@ fun App(openUrl: (String) -> Boolean, onWebLoadFinish: () -> Unit = {}) {
             lineThickness = lineThinckness.dp,
             animationDuration = animationDuration,
             targetShape = targetShape,
-            animateToNextTarget = animateToNextTarget
+            animateToNextTarget = animateToNextTarget,
+            advanceOnTargetTapOnly = advanceOnTargetTapOnly
         ) {
             Column(modifier = Modifier.fillMaxSize().verticalScroll(scrollState)) {
                 TopAppBar(title = {
@@ -198,7 +198,7 @@ fun App(openUrl: (String) -> Boolean, onWebLoadFinish: () -> Unit = {}) {
                             expanded = selectTargetMenuExpaned,
                             onExpandedChange = { selectTargetMenuExpaned = it }) {
                             OutlinedTextField(
-                                modifier = Modifier.menuAnchor(type = MenuAnchorType.PrimaryNotEditable).showcase(
+                                modifier = Modifier.menuAnchor(type = ExposedDropdownMenuAnchorType.PrimaryNotEditable).showcase(
                                     4, message = ShowcaseMsg(
                                         text = buildAnnotatedString {
                                             append("You can choose what target to showcase form here then click the ")
@@ -259,7 +259,7 @@ fun App(openUrl: (String) -> Boolean, onWebLoadFinish: () -> Unit = {}) {
                             expanded = selectHeadMenuExpaned,
                             onExpandedChange = { selectHeadMenuExpaned = it }) {
                             OutlinedTextField(
-                                modifier = Modifier.menuAnchor(type = MenuAnchorType.PrimaryNotEditable),
+                                modifier = Modifier.menuAnchor(type = ExposedDropdownMenuAnchorType.PrimaryNotEditable),
                                 value = selectedHead,
                                 onValueChange = {},
                                 readOnly = true,
@@ -370,7 +370,7 @@ fun App(openUrl: (String) -> Boolean, onWebLoadFinish: () -> Unit = {}) {
                             expanded = selectTargetShapeMenuExpaned,
                             onExpandedChange = { selectTargetShapeMenuExpaned = it }) {
                             OutlinedTextField(
-                                modifier = Modifier.menuAnchor(MenuAnchorType.PrimaryNotEditable, true),
+                                modifier = Modifier.menuAnchor(ExposedDropdownMenuAnchorType.PrimaryNotEditable, true),
                                 value = targetShapeName,
                                 onValueChange = {},
                                 readOnly = true,
@@ -605,7 +605,7 @@ fun App(openUrl: (String) -> Boolean, onWebLoadFinish: () -> Unit = {}) {
                                         Modifier.selectable(
                                             selected = animateHead,
                                             onClick = { if (!useTargetShowcaseLayout) animateHead = !animateHead },
-                                            role = Role.RadioButton,
+                                            role = Role.Checkbox,
                                             enabled = !useTargetShowcaseLayout
                                         ), verticalAlignment = Alignment.CenterVertically
                                     ) {
@@ -620,6 +620,20 @@ fun App(openUrl: (String) -> Boolean, onWebLoadFinish: () -> Unit = {}) {
                                         )
                                     }
                                 }
+                            }
+                            Row(
+                                modifier = Modifier.selectable(
+                                    selected = advanceOnTargetTapOnly,
+                                    onClick = { advanceOnTargetTapOnly = !advanceOnTargetTapOnly },
+                                    role = Role.Checkbox
+                                ),
+                                verticalAlignment = Alignment.CenterVertically,
+                            ) {
+                                Text("Advance on target tap only")
+                                Checkbox(
+                                    checked = advanceOnTargetTapOnly,
+                                    onCheckedChange = { advanceOnTargetTapOnly = it }
+                                )
                             }
                         }
                     }
@@ -735,7 +749,6 @@ fun App(openUrl: (String) -> Boolean, onWebLoadFinish: () -> Unit = {}) {
     }
 }
 
-@Preview
 @Composable
 fun AppPreview() {
     MyTheme {

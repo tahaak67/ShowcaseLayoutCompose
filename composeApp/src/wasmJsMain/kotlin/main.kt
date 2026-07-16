@@ -3,12 +3,12 @@ import androidx.compose.ui.ExperimentalComposeUiApi
 import androidx.compose.ui.platform.LocalFontFamilyResolver
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.platform.Font
-import androidx.compose.ui.window.CanvasBasedWindow
+import androidx.compose.ui.window.ComposeViewport
 import showcase_layout_compose_kmp.composeapp.generated.resources.Res
 
 @OptIn(ExperimentalComposeUiApi::class)
 fun main() {
-    CanvasBasedWindow(canvasElementId = "ComposeTarget") {
+    ComposeViewport(viewportContainerId = "ComposeTarget"){
         val fontFamilyResolver = LocalFontFamilyResolver.current
 
         LaunchedEffect(Unit) {

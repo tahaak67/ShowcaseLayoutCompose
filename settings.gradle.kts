@@ -20,5 +20,4 @@ dependencyResolutionManagement {
 rootProject.name = "Showcase-Layout-Compose-KMP"
 include (":app")
 include (":showcase-layout-compose")
-includeBuild("convention-plugins")
 include (":composeApp")
