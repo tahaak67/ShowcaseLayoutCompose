@@ -1,5 +1,3 @@
-import org.jetbrains.kotlin.gradle.targets.js.webpack.KotlinWebpackConfig
-
 plugins {
     alias(libs.plugins.kotlinMultiplatform)
     alias(libs.plugins.androidLibrary)
@@ -19,19 +17,8 @@ kotlin {
 
     @OptIn(org.jetbrains.kotlin.gradle.ExperimentalWasmDsl::class)
     wasmJs {
-        outputModuleName = "composeApp"
-        browser {
-            commonWebpackConfig {
-                outputFileName = "composeApp.js"
-                devServer = (devServer ?: KotlinWebpackConfig.DevServer()).apply {
-                    static = (static ?: mutableListOf()).apply {
-                        // Serve sources to debug inside browser
-                        add(project.projectDir.path)
-                    }
-                }
-            }
-        }
-        binaries.executable()
+        outputModuleName = "showcase-layout-compose"
+        browser()
     }
 
 
@@ -70,7 +57,7 @@ mavenPublishing {
     publishToMavenCentral()
     signAllPublications()
 
-    coordinates("ly.com.tahaben", "showcase-layout-compose", "1.1.0")
+    coordinates("ly.com.tahaben", "showcase-layout-compose", "1.1.1")
 
     pom {
         name.set("Showcase Layout Compose")
