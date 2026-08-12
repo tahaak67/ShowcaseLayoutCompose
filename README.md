@@ -1,4 +1,5 @@
 ![Maven Central](https://img.shields.io/maven-central/v/ly.com.tahaben/showcase-layout-compose)
+[![Android Weekly](https://androidweekly.net/issues/issue-739/badge)](https://androidweekly.net/issues/issue-739)
 [![GitHub issues](https://img.shields.io/github/issues/tahaak67/ShowcaseLayoutCompose)](https://github.com/tahaak67/ShowcaseLayoutCompose/issues)
 [![GitHub stars](https://img.shields.io/github/stars/tahaak67/ShowcaseLayoutCompose)](https://github.com/tahaak67/ShowcaseLayoutCompose/stargazers)
 [![GitHub license](https://img.shields.io/github/license/tahaak67/ShowcaseLayoutCompose)](https://github.com/tahaak67/ShowcaseLayoutCompose/blob/main/LICENSE)
