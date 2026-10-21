@@ -25,6 +25,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.setValue
+import androidx.compose.runtime.snapshotFlow
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.geometry.CornerRadius
 import androidx.compose.ui.geometry.Offset
@@ -59,6 +60,7 @@ import androidx.compose.ui.unit.toSize
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
 import ly.com.tahaben.showcase_layout_compose.domain.Level
 import ly.com.tahaben.showcase_layout_compose.domain.ShowcaseEventListener
@@ -141,6 +143,10 @@ fun ShowcaseLayout(
     val layoutCoordinatesState = remember { mutableStateOf<LayoutCoordinates?>(null) }
     val scope = ShowcaseScopeImpl(greeting)
     scope.layoutCoordinatesState = layoutCoordinatesState
+    /** per-step canProceed flags and onProceed callbacks, published by the showcase modifiers */
+    val stepRegistry = remember { StepRegistry() }
+    scope.stepRegistry = stepRegistry
+    val stepConditions = stepRegistry.conditions
     scope.currentContent()
 
     var singleGreetingMsg by remember { mutableStateOf<ShowcaseMsg?>(null) }
@@ -311,6 +317,13 @@ fun ShowcaseLayout(
                     scope.showcaseEventListener?.onEvent(Level.VERBOSE, TAG + "no previous target to go back to")
                     return
                 }
+                /** the step is over, whatever ends it: let the caller react (hide the keyboard, ...) */
+                if (!isSingleGreeting && currentIndex != 0) {
+                    stepRegistry.onProceed[currentIndex]?.let { onProceed ->
+                        scope.showcaseEventListener?.onEvent(Level.VERBOSE, TAG + "index:$currentIndex onProceed")
+                        onProceed()
+                    }
+                }
                 coroutineScope.launch {
 
                     /** hide current arrow */
@@ -411,8 +424,39 @@ fun ShowcaseLayout(
                 }
             }
 
+            /** locked: the current step declared canProceed = false (never a greeting). While locked the
+             * overlay ignores taps and touches inside the target fall through to the target itself;
+             * the step ends on its own once the condition is met. [ShowcaseMsgScope] calls still work. */
+            val isStepLocked = !isSingleGreeting && currentIndex != 0 && stepConditions[currentIndex] == false
+            val currentIsStepLocked by rememberUpdatedState(isStepLocked)
+            LaunchedEffect(currentIndex, showCasingItem, isSingleGreeting) {
+                if (isSingleGreeting || currentIndex == 0) return@LaunchedEffect
+                val gate = snapshotFlow { stepConditions[currentIndex] ?: true }
+                /** only a step that starts locked advances by itself; one that may already proceed
+                 * behaves like any other step */
+                if (!gate.first()) {
+                    scope.showcaseEventListener?.onEvent(
+                        Level.INFO,
+                        TAG + "step $currentIndex locked until its condition is met"
+                    )
+                    gate.first { it }
+                    scope.showcaseEventListener?.onEvent(
+                        Level.INFO,
+                        TAG + "step $currentIndex condition met, advancing"
+                    )
+                    currentAdvance(StepAction.NEXT)
+                }
+            }
+
             /** A tap on the overlay: the canvas, or custom message content that didn't handle it. */
             fun onOverlayTap(position: Offset) {
+                if (currentIsStepLocked) {
+                    scope.showcaseEventListener?.onEvent(
+                        Level.VERBOSE,
+                        TAG + "step $currentIndex locked, tap ignored at $position"
+                    )
+                    return
+                }
                 /** when enabled, only taps inside the target shape advance the showcase
                  * (the greeting/initial screen always advances on any tap) */
                 if (advanceOnTargetTapOnly && currentIndex != 0 && !isSingleGreeting &&
@@ -441,9 +485,12 @@ fun ShowcaseLayout(
                 modifier = Modifier
                     .fillMaxSize()
                     .semantics { testTag = "canvas" }
-                    .pointerInput(Unit) {
-                        detectTapGestures { onOverlayTap(it) }
-                    },
+                    /** a locked step must leave the target touchable: no pointer-input node here */
+                    .then(
+                        if (isStepLocked) Modifier else Modifier.pointerInput(Unit) {
+                            detectTapGestures { onOverlayTap(it) }
+                        }
+                    ),
                 onDraw = {
 
                     /** make transparent background path around the target composable */
@@ -913,6 +960,14 @@ fun ShowcaseLayout(
                     }
                 }
             )
+            /** while the step is locked, swallow touches everywhere except over the target so the
+             * target itself receives them (see [TouchBlockerWithHole]) */
+            if (isStepLocked) {
+                TouchBlockerWithHole(
+                    hole = { Rect(offset, itemSize) },
+                    onTap = { onOverlayTap(it) }
+                )
+            }
             /** Custom message content is composed on top of the canvas. It is only in the tree
              * while visible so an invisible button can't swallow taps between steps; while it is
              * composed, taps on non-clickable parts fall through to the canvas above. */
@@ -1041,6 +1096,10 @@ class ShowcaseScopeImpl(greeting: ShowcaseMsg?) : ShowcaseScope {
     /** Coordinates of the showcase layout itself, used to convert target positions from
      * root space to the layout's local space (the space the overlay canvas draws in). */
     internal var layoutCoordinatesState: State<LayoutCoordinates?> = mutableStateOf(null)
+
+    /** Per-step `canProceed` / `onProceed`, owned (remembered) by the layout and injected here,
+     * since this scope object is recreated on every recomposition. */
+    internal var stepRegistry: StepRegistry = StepRegistry()
     override var showcaseEventListener: ShowcaseEventListener? = null
     private val _showcaseActionFlow = MutableStateFlow<Int?>(null)
     val showcaseActionFlow = _showcaseActionFlow.asStateFlow()
@@ -1051,10 +1110,12 @@ class ShowcaseScopeImpl(greeting: ShowcaseMsg?) : ShowcaseScope {
     override fun Showcase(
         index: Int,
         message: ShowcaseMsg?,
+        canProceed: Boolean,
+        onProceed: (() -> Unit)?,
         itemContent: @Composable () -> Unit
     ) {
         require(index >= 1) { "Index must be 1 or greater" }
-        Box(modifier = Modifier.onGloballyPositioned {
+        Box(modifier = Modifier.stepRegistration(index, canProceed, onProceed, stepRegistry).onGloballyPositioned {
             showcaseDataHashMap[index] = ShowcaseData(it.size, it.positionInRoot(), message, it)
 
             showcaseEventListener?.onEvent(Level.VERBOSE, TAG + "Index: $index")
@@ -1073,9 +1134,14 @@ class ShowcaseScopeImpl(greeting: ShowcaseMsg?) : ShowcaseScope {
         }
     }
 
-    override fun Modifier.showcase(index: Int, message: ShowcaseMsg?): Modifier {
+    override fun Modifier.showcase(
+        index: Int,
+        message: ShowcaseMsg?,
+        canProceed: Boolean,
+        onProceed: (() -> Unit)?
+    ): Modifier {
         require(index >= 1) { "Index must be 1 or greater" }
-        return this.then(
+        return this.stepRegistration(index, canProceed, onProceed, stepRegistry).then(
             onGloballyPositioned {
                 if (it.isAttached) {
                     showcaseDataHashMap[index] =

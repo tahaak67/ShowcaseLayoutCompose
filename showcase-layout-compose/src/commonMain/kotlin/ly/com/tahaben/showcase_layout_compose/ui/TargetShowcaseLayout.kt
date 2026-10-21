@@ -27,6 +27,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.setValue
+import androidx.compose.runtime.snapshotFlow
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.geometry.CornerRadius
 import androidx.compose.ui.geometry.Offset
@@ -56,6 +57,7 @@ import androidx.compose.ui.unit.IntSize
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.round
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
 import ly.com.tahaben.showcase_layout_compose.domain.Level
 import ly.com.tahaben.showcase_layout_compose.domain.usecase.computeTargetLayoutMessagePlacement
@@ -130,6 +132,10 @@ fun TargetShowcaseLayout(
     val layoutCoordinatesState = remember { mutableStateOf<LayoutCoordinates?>(null) }
     val scope = ShowcaseScopeImpl(greeting)
     scope.layoutCoordinatesState = layoutCoordinatesState
+    /** per-step canProceed flags and onProceed callbacks, published by the showcase modifiers */
+    val stepRegistry = remember { StepRegistry() }
+    scope.stepRegistry = stepRegistry
+    val stepConditions = stepRegistry.conditions
     scope.currentContent()
     val localDensity = LocalDensity.current
     var singleGreetingMsg by remember { mutableStateOf<ShowcaseMsg?>(null) }
@@ -365,6 +371,13 @@ fun TargetShowcaseLayout(
                     scope.showcaseEventListener?.onEvent(Level.VERBOSE, TAG + "no previous target to go back to")
                     return
                 }
+                /** the step is over, whatever ends it: let the caller react (hide the keyboard, ...) */
+                if (!isSingleGreeting && currentIndex != 0) {
+                    stepRegistry.onProceed[currentIndex]?.let { onProceed ->
+                        scope.showcaseEventListener?.onEvent(Level.VERBOSE, TAG + "index:$currentIndex onProceed")
+                        onProceed()
+                    }
+                }
                 if (showCasingItem) {
                     val shrinkDuration = animationDuration
 
@@ -517,12 +530,43 @@ fun TargetShowcaseLayout(
                 }
             }
 
+            /** locked: the current step declared canProceed = false (never a greeting). While locked the
+             * overlay ignores taps and touches inside the target fall through to the target itself;
+             * the step ends on its own once the condition is met. [ShowcaseMsgScope] calls still work. */
+            val isStepLocked = !isSingleGreeting && currentIndex != 0 && stepConditions[currentIndex] == false
+            val currentIsStepLocked by rememberUpdatedState(isStepLocked)
+            LaunchedEffect(currentIndex, showCasingItem, isSingleGreeting) {
+                if (isSingleGreeting || currentIndex == 0) return@LaunchedEffect
+                val gate = snapshotFlow { stepConditions[currentIndex] ?: true }
+                /** only a step that starts locked advances by itself; one that may already proceed
+                 * behaves like any other step */
+                if (!gate.first()) {
+                    scope.showcaseEventListener?.onEvent(
+                        Level.INFO,
+                        TAG + "step $currentIndex locked until its condition is met"
+                    )
+                    gate.first { it }
+                    scope.showcaseEventListener?.onEvent(
+                        Level.INFO,
+                        TAG + "step $currentIndex condition met, advancing"
+                    )
+                    currentAdvance(StepAction.NEXT)
+                }
+            }
+
             /** A tap on the overlay: the canvas, or custom message content that didn't handle it. */
             fun onOverlayTap(position: Offset) {
                 scope.showcaseEventListener?.onEvent(
                     Level.VERBOSE,
                     TAG + "tapped here $position"
                 )
+                if (currentIsStepLocked) {
+                    scope.showcaseEventListener?.onEvent(
+                        Level.VERBOSE,
+                        TAG + "step $currentIndex locked, tap ignored at $position"
+                    )
+                    return
+                }
                 /** when enabled, only taps inside the target shape advance the showcase
                  * (the greeting/initial screen always advances on any tap) */
                 if (advanceOnTargetTapOnly && currentIndex != 0 && !isSingleGreeting &&
@@ -549,9 +593,12 @@ fun TargetShowcaseLayout(
             Canvas(
                 modifier = Modifier.fillMaxSize()
                     .semantics { testTag = "circleModeCanvas" }
-                    .pointerInput(Unit) {
-                        detectTapGestures { onOverlayTap(it) }
-                    }
+                    /** a locked step must leave the target touchable: no pointer-input node here */
+                    .then(
+                        if (isStepLocked) Modifier else Modifier.pointerInput(Unit) {
+                            detectTapGestures { onOverlayTap(it) }
+                        }
+                    )
             ) {
                 // The per-step msgBackground keeps its historical fixed 0.9 alpha; a layout-wide
                 // overlayColor honors its own alpha so developers can control transparency.
@@ -1092,6 +1139,14 @@ fun TargetShowcaseLayout(
                         alpha = messageTextAlpha.value * canvasAlpha.value
                     )
                 }
+            }
+            /** while the step is locked, swallow touches everywhere except over the target so the
+             * target itself receives them (see [TouchBlockerWithHole]) */
+            if (isStepLocked) {
+                TouchBlockerWithHole(
+                    hole = { Rect(Offset(animatedX.value, animatedY.value), itemSize) },
+                    onTap = { onOverlayTap(it) }
+                )
             }
             /** Custom message content is composed on top of the canvas. It is only in the tree
              * while visible so an invisible button can't swallow taps between steps; while it is

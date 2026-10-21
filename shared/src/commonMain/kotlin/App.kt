@@ -59,6 +59,8 @@ import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalClipboardManager
+import androidx.compose.ui.platform.LocalFocusManager
+import androidx.compose.ui.platform.LocalSoftwareKeyboardController
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.text.ParagraphStyle
 import androidx.compose.ui.text.SpanStyle
@@ -98,6 +100,8 @@ fun App(openUrl: (String) -> Boolean, onWebLoadFinish: () -> Unit = {}) {
     var selectHeadMenuExpaned by remember { mutableStateOf(false) }
     var selectTargetShapeMenuExpaned by remember { mutableStateOf(false) }
     val clipboardManager = LocalClipboardManager.current
+    val keyboardController = LocalSoftwareKeyboardController.current
+    val focusManager = LocalFocusManager.current
     val snackbarHostState = remember { SnackbarHostState() }
     var finishedSubsequentShowcase by remember { mutableStateOf(false) }
     // State to track which layout is currently selected (ShowcaseLayout or TargetShowcaseLayout)
@@ -107,7 +111,8 @@ fun App(openUrl: (String) -> Boolean, onWebLoadFinish: () -> Unit = {}) {
             "Toolbar title" to 1,
             "Toolbar menu icon" to 2,
             "Showcase Button" to 3,
-            "Target Dropdown menu" to 4
+            "Target Dropdown menu" to 4,
+            "Locked text field" to 6
         )
     val arrowHeadMap =
         mapOf(
@@ -145,6 +150,8 @@ fun App(openUrl: (String) -> Boolean, onWebLoadFinish: () -> Unit = {}) {
     var animationDuration by remember { mutableStateOf(500) }
     var animateToNextTarget by remember { mutableStateOf(true) }
     var advanceOnTargetTapOnly by remember { mutableStateOf(true) }
+    // what the user typed in the locked step's text field; step 6 can only proceed once it says "showcase"
+    var typedText by remember { mutableStateOf("") }
     var targetShape by remember { mutableStateOf(TargetShape.CIRCLE) }
     val targetShapeName by derivedStateOf {
         when(targetShape){
@@ -240,6 +247,44 @@ fun App(openUrl: (String) -> Boolean, onWebLoadFinish: () -> Unit = {}) {
                             onCheckedChange = { useTargetShowcaseLayout = it }
                         )
                         Text(if (useTargetShowcaseLayout) "Target Showcase Layout" else "Showcase Layout")
+                    }
+
+                    // A locked step (canProceed = false): the overlay ignores taps, touches on the field
+                    // reach it (focus + soft keyboard) and the showcase moves on by itself once the
+                    // condition is met.
+                    Row(
+                        horizontalArrangement = Arrangement.spacedBy(8.dp),
+                        verticalAlignment = Alignment.CenterVertically,
+                    ) {
+                        Text("Locked step", modifier = Modifier.width(100.dp))
+                        OutlinedTextField(
+                            modifier = Modifier.showcase(
+                                6, message = ShowcaseMsg(
+                                    text = "This step is locked \uD83D\uDD12 tap the field and type \"showcase\" to continue.",
+                                    msgBackground = Color(0xff9c27b0),
+                                    roundedCorner = msgCornerRadius.dp,
+                                    textStyle = TextStyle(color = Color.White, fontWeight = FontWeight.Bold),
+                                    arrow = Arrow(
+                                        animSize = animateHead,
+                                        head = headType,
+                                        headSize = headSize,
+                                        animationDuration = animationDuration
+                                    ),
+                                    enterAnim = if (animateMsg) MsgAnimation.FadeInOut(animationDuration) else MsgAnimation.None
+                                ),
+                                canProceed = typedText.trim().equals("showcase", ignoreCase = true),
+                                // the step is over: drop focus and hide the keyboard the step opened
+                                onProceed = {
+                                    focusManager.clearFocus()
+                                    keyboardController?.hide()
+                                    typedText = ""
+                                }
+                            ),
+                            value = typedText,
+                            onValueChange = { typedText = it },
+                            singleLine = true,
+                            label = { Text("Type \"showcase\"") },
+                        )
                     }
 
                     Row(

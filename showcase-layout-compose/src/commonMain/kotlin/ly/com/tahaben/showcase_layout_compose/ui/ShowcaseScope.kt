@@ -29,17 +29,46 @@ interface ShowcaseScope {
      *
      * @param index key of current item MUST start at 1 and increment by 1 for each composable inside this ShowcaseLayout.
      * @param message a message to display when showcasing this composable.
+     * @param canProceed when false this step is **locked**: tapping the overlay no longer advances or
+     * dismisses it, touches inside the target's bounds reach the target itself (so a text field gets
+     * focus and the keyboard, a button clicks, ...) and the showcase advances by itself as soon as this
+     * becomes true. Read it from snapshot state, e.g. `var done by remember { mutableStateOf(false) }`.
+     * `next()`, `previous()` and `skip()` from a custom message are not blocked. Defaults to true.
+     * @param onProceed called once when the showcase leaves this step, whatever ends it: a tap,
+     * `next()`/`previous()`/`skip()`, the condition of a locked step being met, the last step
+     * finishing, or a single item being dismissed. Use it to clean up after the step, for example
+     * to hide the soft keyboard a locked text-field step opened: `LocalSoftwareKeyboardController`.
      **/
     @Composable
-    fun Showcase(index: Int, message: ShowcaseMsg?, itemContent: @Composable () -> Unit)
+    fun Showcase(
+        index: Int,
+        message: ShowcaseMsg?,
+        canProceed: Boolean = true,
+        onProceed: (() -> Unit)? = null,
+        itemContent: @Composable () -> Unit
+    )
 
     /**
      * Showcase ShowcaseScope
      *
      * @param index key of current item **MUST** start at 1 and increment by 1 for each composable inside this ShowcaseLayout.
      * @param message a message to display when showcasing this composable.
+     * @param canProceed when false this step is **locked**: tapping the overlay no longer advances or
+     * dismisses it, touches inside the target's bounds reach the target itself (so a text field gets
+     * focus and the keyboard, a button clicks, ...) and the showcase advances by itself as soon as this
+     * becomes true. Read it from snapshot state, e.g. `var done by remember { mutableStateOf(false) }`.
+     * `next()`, `previous()` and `skip()` from a custom message are not blocked. Defaults to true.
+     * @param onProceed called once when the showcase leaves this step, whatever ends it: a tap,
+     * `next()`/`previous()`/`skip()`, the condition of a locked step being met, the last step
+     * finishing, or a single item being dismissed. Use it to clean up after the step, for example
+     * to hide the soft keyboard a locked text-field step opened: `LocalSoftwareKeyboardController`.
      **/
-    fun Modifier.showcase(index: Int, message: ShowcaseMsg?): Modifier
+    fun Modifier.showcase(
+        index: Int,
+        message: ShowcaseMsg?,
+        canProceed: Boolean = true,
+        onProceed: (() -> Unit)? = null
+    ): Modifier
 
 
     var showcaseEventListener: ShowcaseEventListener?

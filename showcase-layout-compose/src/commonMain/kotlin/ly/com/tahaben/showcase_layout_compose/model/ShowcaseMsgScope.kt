@@ -28,7 +28,8 @@ interface ShowcaseMsgScope {
      * Advance to the next target, or dismiss the message when showing a single item
      * ([ly.com.tahaben.showcase_layout_compose.ui.ShowcaseScope.showcaseItem]) or a single greeting
      * ([ly.com.tahaben.showcase_layout_compose.ui.ShowcaseScope.showGreeting]).
-     * Not affected by `advanceOnTargetTapOnly`.
+     * Not affected by `advanceOnTargetTapOnly`, and not blocked by a step whose `canProceed` is
+     * false: disable your own button with `enabled = canProceed` if you want that.
      */
     fun next()
 

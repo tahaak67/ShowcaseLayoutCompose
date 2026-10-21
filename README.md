@@ -328,6 +328,58 @@ ShowcaseLayout(
 )
 ```
 
+#### canProceed (locked steps)
+
+Starting from version 1.2.0 a step can be **locked** until the user does something: taps a specific
+button, types a valid value, toggles a switch, ... Pass `canProceed = false` to `Modifier.showcase()`
+(or `Showcase()`) and the step behaves like this:
+
+- Tapping the overlay no longer advances or dismisses the showcase.
+- Touches **inside the target's bounds** go straight to the target, as if the overlay was not there: a
+  text field gets focus and the soft keyboard opens, a button clicks, a list scrolls. Touches outside
+  the target are still swallowed.
+- As soon as `canProceed` becomes `true` the showcase advances by itself (or dismisses the item when
+  showing a single item with `showcaseItem()`).
+
+`canProceed` is a plain `Boolean`, so read it from snapshot state and let recomposition do the rest.
+Pair it with `onProceed`, which is called once when the showcase leaves the step, to clean up after
+it, for example to hide the soft keyboard the step opened so users (iOS in particular) are not left
+with it on screen:
+
+```kotlin
+var typed by remember { mutableStateOf("") }
+val keyboard = LocalSoftwareKeyboardController.current
+val focusManager = LocalFocusManager.current
+
+OutlinedTextField(
+    value = typed,
+    onValueChange = { typed = it },
+    modifier = Modifier.showcase(
+        index = 2,
+        message = ShowcaseMsg("Type your name to continue"),
+        canProceed = typed.isNotBlank(),
+        onProceed = {
+            focusManager.clearFocus()
+            keyboard?.hide()
+        }
+    )
+)
+```
+
+Notes:
+
+- A step whose `canProceed` is already `true` when it is reached behaves like any other step. Only a
+  step that is locked when reached waits for the condition and then advances on its own.
+- The pass-through area is the target's rectangular bounds. With `TargetShape.CIRCLE` the visible
+  cutout can be a bit larger than that; touches in the extra area are swallowed.
+- `next()`, `previous()` and `skip()` from a [custom composable message](#custom-composable-messages)
+  still work while a step is locked, so you can keep a "Skip" escape hatch. If you don't want a
+  "Next" button to bypass the lock, disable it with `enabled = canProceed`.
+- `onProceed` is not tied to locked steps: any step can use it. It fires whatever ends the step: a
+  tap, `next()`/`previous()`/`skip()`, the condition being met, the last step finishing, or a single
+  item being dismissed.
+- Available on both `ShowcaseLayout` and `TargetShowcaseLayout`.
+
 #### ShowcaseMsg
 
 Use `ShowcaseMsg()` to add a message and customize it with arrow, background and more.
@@ -392,7 +444,7 @@ The same works for the `greeting` parameter and for `showGreeting(ShowcaseMsg { 
 
 - The composable owns its own look, so `text`, `textStyle` and `roundedCorner` are ignored. `msgBackground` is ignored by `ShowcaseLayout`; in `TargetShowcaseLayout` it still acts as the overlay color of that step.
 - `gravity`, `arrow`, `enterAnim` and `exitAnim` keep working. The arrow starts from the edge of your composable that faces the target, and if `Gravity.Auto` has to move the composable to the other side of the target a `Side.Top`/`Side.Bottom` arrow points at the edge facing it instead of crossing the target. The composable is always kept on screen.
-- The lambda receives a `ShowcaseMsgScope` so buttons inside it can drive the showcase: `next()` advances (or dismisses a single item / greeting), `previous()` goes back when `hasPrevious` is true, and `skip()` ends the whole showcase and calls `onFinish`. `next()` is not affected by `advanceOnTargetTapOnly`.
+- The lambda receives a `ShowcaseMsgScope` so buttons inside it can drive the showcase: `next()` advances (or dismisses a single item / greeting), `previous()` goes back when `hasPrevious` is true, and `skip()` ends the whole showcase and calls `onFinish`. `next()` is not affected by `advanceOnTargetTapOnly` or by a [locked step](#canproceed-locked-steps).
 - Taps on parts of the composable that are not clickable fall through and advance the showcase exactly like a tap anywhere else. Clickable parts (buttons, cards with `onClick`, ...) handle their own taps.
 - The content is measured at most as wide as the screen minus a small margin, so prefer wrap-content sizes. Native interop views (e.g. `UIKitView`) inside the content are not supported.
 
