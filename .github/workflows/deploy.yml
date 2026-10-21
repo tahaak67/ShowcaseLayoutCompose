@@ -32,10 +32,10 @@ jobs:
 
       - name: Build
         run: |
-          ./gradlew :composeApp:wasmJsBrowserDistribution --no-configuration-cache
+          ./gradlew :webApp:wasmJsBrowserDistribution --no-configuration-cache
 
       - name: Deploy
         uses: JamesIves/github-pages-deploy-action@v4
         with:
           branch: gh-pages
-          folder: composeApp/build/dist/wasmJs/productionExecutable
+          folder: webApp/build/dist/wasmJs/productionExecutable

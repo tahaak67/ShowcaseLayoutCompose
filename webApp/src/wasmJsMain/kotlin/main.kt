@@ -4,7 +4,7 @@ import androidx.compose.ui.platform.LocalFontFamilyResolver
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.platform.Font
 import androidx.compose.ui.window.ComposeViewport
-import showcase_layout_compose_kmp.composeapp.generated.resources.Res
+import showcase_layout_compose_kmp.shared.generated.resources.Res
 
 @OptIn(ExperimentalComposeUiApi::class)
 fun main() {

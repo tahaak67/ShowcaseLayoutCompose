@@ -1,6 +1,6 @@
 plugins {
     alias(libs.plugins.kotlinMultiplatform)
-    alias(libs.plugins.androidLibrary)
+    alias(libs.plugins.androidKmpLibrary)
     alias(libs.plugins.jetbrainsCompose)
     alias(libs.plugins.compose.compiler)
     alias(libs.plugins.mavenPublish)
@@ -8,7 +8,14 @@ plugins {
 
 
 kotlin {
-    androidTarget()
+    jvmToolchain(17)
+
+    android {
+        namespace = "ly.com.tahaben.showcaselayoutcompose"
+        compileSdk = libs.versions.android.compileSdk.get().toInt()
+        // Matches the minimum required by Compose 1.12.
+        minSdk = 23
+    }
 
     jvm("desktop")
 
@@ -23,31 +30,13 @@ kotlin {
 
 
     sourceSets {
-        val commonMain by getting {
-            dependencies {
-                implementation(compose.runtime)
-                implementation(compose.foundation)
-            }
+        commonMain.dependencies {
+            implementation(compose.runtime)
+            implementation(compose.foundation)
         }
-        val androidMain by getting
-        val desktopMain by getting {
-            dependencies {
-                implementation(compose.desktop.common)
-            }
+        getByName("desktopMain").dependencies {
+            implementation(compose.desktop.common)
         }
-    }
-}
-
-android {
-    compileSdk = libs.versions.android.compileSdk.get().toInt()
-    namespace = "ly.com.tahaben.showcaselayoutcompose"
-
-    compileOptions {
-        sourceCompatibility = JavaVersion.VERSION_17
-        targetCompatibility = JavaVersion.VERSION_17
-    }
-    kotlin {
-        jvmToolchain(17)
     }
 }
 

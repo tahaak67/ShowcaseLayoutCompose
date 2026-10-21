@@ -429,7 +429,7 @@ In recent releases logs have been disabled by default, to print log statement of
 For a complete example of the original ShowcaseLayout, check out [MainScreen.kt](https://github.com/tahaak67/ShowcaseLayoutCompose/blob/main/app/src/main/java/ly/com/tahaben/showcaselayoutcompose/ui/MainScreen.kt).
 
 ### TargetShowcaseLayout Example
-For an example of the new TargetShowcaseLayout, check out the [App.kt](https://github.com/tahaak67/ShowcaseLayoutCompose/blob/main/composeApp/src/commonMain/kotlin/App.kt) file in the composeApp module.
+For an example of the new TargetShowcaseLayout, check out the [App.kt](https://github.com/tahaak67/ShowcaseLayoutCompose/blob/main/shared/src/commonMain/kotlin/App.kt) file in the shared module.
 
 You can also clone/download this repository and run the demo app to see both layouts in action.
 
