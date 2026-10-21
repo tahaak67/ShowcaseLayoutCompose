@@ -19,8 +19,11 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.selection.selectable
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Info
 import androidx.compose.material.icons.filled.MoreVert
 import androidx.compose.material3.Button
+import androidx.compose.material3.Card
+import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.Checkbox
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ExperimentalMaterial3Api
@@ -70,6 +73,7 @@ import kotlinx.coroutines.launch
 import ly.com.tahaben.showcase_layout_compose.domain.Level
 import ly.com.tahaben.showcase_layout_compose.domain.ShowcaseEventListener
 import ly.com.tahaben.showcase_layout_compose.model.Arrow
+import ly.com.tahaben.showcase_layout_compose.model.Gravity
 import ly.com.tahaben.showcase_layout_compose.model.Head
 import ly.com.tahaben.showcase_layout_compose.model.MsgAnimation
 import ly.com.tahaben.showcase_layout_compose.model.ShowcaseMsg
@@ -705,10 +709,8 @@ fun App(openUrl: (String) -> Boolean, onWebLoadFinish: () -> Unit = {}) {
                         Button(
                             modifier = Modifier.showcase(
                                 3, message = ShowcaseMsg(
-                                    text = "Click here to showcase the target selected above.",
-                                    msgBackground = Color.Transparent,
-                                    textStyle = TextStyle(color = Color.White),
-                                    roundedCorner = msgCornerRadius.dp,
+                                    // a custom composable message: the library only places it and draws the arrow
+                                    gravity = Gravity.Auto,
                                     arrow = Arrow(
                                         animSize = animateHead,
                                         head = headType,
@@ -716,8 +718,36 @@ fun App(openUrl: (String) -> Boolean, onWebLoadFinish: () -> Unit = {}) {
                                         headSize = headSize,
                                         animationDuration = animationDuration
                                     ),
-                                    enterAnim = if (animateMsg) MsgAnimation.FadeInOut(animationDuration) else MsgAnimation.None
-                                )
+                                    enterAnim = if (animateMsg) MsgAnimation.FadeInOut(animationDuration) else MsgAnimation.None,
+                                    // only used by TargetShowcaseLayout, where it is the overlay color of this step
+                                    msgBackground = Color(0xff0042fd)
+                                ) {
+                                    Card(colors = CardDefaults.cardColors(containerColor = Color.White)) {
+                                        Column(
+                                            modifier = Modifier.padding(16.dp),
+                                            verticalArrangement = Arrangement.spacedBy(8.dp)
+                                        ) {
+                                            Row(
+                                                verticalAlignment = Alignment.CenterVertically,
+                                                horizontalArrangement = Arrangement.spacedBy(8.dp)
+                                            ) {
+                                                Icon(Icons.Default.Info, contentDescription = null, tint = Color(0xff0042fd))
+                                                Text("Custom composable message", fontWeight = FontWeight.Bold)
+                                            }
+                                            Text("This message is a Card you provide. Click the button below it to showcase the target selected above.")
+                                            Row(
+                                                modifier = Modifier.fillMaxWidth(),
+                                                horizontalArrangement = Arrangement.spacedBy(8.dp),
+                                                verticalAlignment = Alignment.CenterVertically
+                                            ) {
+                                                TextButton(onClick = { previous() }, enabled = hasPrevious) { Text("Back") }
+                                                Spacer(Modifier.weight(1f))
+                                                TextButton(onClick = { skip() }) { Text("Skip") }
+                                                Button(onClick = { next() }) { Text("Next") }
+                                            }
+                                        }
+                                    }
+                                }
                             ),
                             onClick = {
                                 val indexToShowcase = targets[selectedTarget]!!
@@ -729,10 +759,42 @@ fun App(openUrl: (String) -> Boolean, onWebLoadFinish: () -> Unit = {}) {
                         }
                     }
 
-                    Button(onClick = {
-                        isShowcasing = true
-                    }) {
-                        Text("Subsequent Showcase!")
+                    Row {
+                        Button(onClick = {
+                            isShowcasing = true
+                        }) {
+                            Text("Subsequent Showcase!")
+                        }
+                        Spacer(Modifier.width(8.dp))
+                        Button(onClick = {
+                            coroutineScope.launch {
+                                // a greeting can be a custom composable too
+                                showGreeting(ShowcaseMsg {
+                                    Card {
+                                        Column(
+                                            modifier = Modifier.padding(24.dp),
+                                            horizontalAlignment = Alignment.CenterHorizontally,
+                                            verticalArrangement = Arrangement.spacedBy(12.dp)
+                                        ) {
+                                            Icon(
+                                                Icons.Default.Info,
+                                                contentDescription = null,
+                                                modifier = Modifier.size(48.dp),
+                                                tint = MaterialTheme.colorScheme.primary
+                                            )
+                                            Text("A custom greeting", fontWeight = FontWeight.Bold)
+                                            Text(
+                                                "Greetings can be composables too. Tap anywhere, or press the button.",
+                                                textAlign = TextAlign.Center
+                                            )
+                                            Button(onClick = { next() }) { Text("Got it") }
+                                        }
+                                    }
+                                })
+                            }
+                        }) {
+                            Text("Custom greeting")
+                        }
                     }
                 }
                 Box() {

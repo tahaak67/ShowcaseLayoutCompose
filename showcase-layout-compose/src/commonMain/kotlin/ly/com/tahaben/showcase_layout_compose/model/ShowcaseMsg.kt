@@ -1,5 +1,6 @@
 package ly.com.tahaben.showcase_layout_compose.model
 
+import androidx.compose.runtime.Composable
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.AnnotatedString
 import androidx.compose.ui.text.TextStyle
@@ -34,6 +35,15 @@ import androidx.compose.ui.unit.dp
  * @param arrow add an arrow.
  * @param enterAnim enter animation.
  * @param exitAnim exit animation.
+ * @param content an optional custom composable to show instead of the text, for example an image
+ * or a card with an icon and a button. Use the trailing-lambda constructor to create one:
+ * `ShowcaseMsg(arrow = Arrow()) { Card { ... } }`. The composable owns its own look, so when `content`
+ * is set [text], [textStyle] and [roundedCorner] are ignored; [msgBackground] is ignored by
+ * `ShowcaseLayout` but still acts as the overlay color in `TargetShowcaseLayout`. [gravity], [arrow],
+ * [enterAnim] and [exitAnim] keep working and the arrow points at the composable. The lambda receives
+ * a [ShowcaseMsgScope] so buttons inside it can call `next()`, `previous()` or `skip()`.
+ * Native interop views (e.g. `UIKitView`) inside `content` are not supported: they ignore the fade
+ * animation and swallow touches.
  **/
 data class ShowcaseMsg(
     val text: AnnotatedString,
@@ -44,6 +54,7 @@ data class ShowcaseMsg(
     val arrow: Arrow? = null,
     val enterAnim: MsgAnimation = MsgAnimation.FadeInOut(),
     val exitAnim: MsgAnimation = MsgAnimation.FadeInOut(),
+    val content: (@Composable ShowcaseMsgScope.() -> Unit)? = null,
 ) {
     constructor(
         text: String,
@@ -65,5 +76,37 @@ data class ShowcaseMsg(
         exitAnim
     )
 
-
+    /**
+     * Creates a message whose body is a custom composable instead of text.
+     *
+     * ```
+     * ShowcaseMsg(gravity = Gravity.Bottom, arrow = Arrow(color = Color.White)) {
+     *     Card { Text("Tap here to open the menu") }
+     * }
+     * ```
+     *
+     * @param gravity display the message below or on top of target.
+     * @param arrow add an arrow pointing from the composable to the target.
+     * @param enterAnim enter animation.
+     * @param exitAnim exit animation.
+     * @param msgBackground only used by `TargetShowcaseLayout`, where it acts as the overlay color
+     * for this step; `ShowcaseLayout` ignores it because the composable draws its own background.
+     * @param content the composable to show; it receives a [ShowcaseMsgScope].
+     */
+    constructor(
+        gravity: Gravity = Gravity.Auto,
+        arrow: Arrow? = null,
+        enterAnim: MsgAnimation = MsgAnimation.FadeInOut(),
+        exitAnim: MsgAnimation = MsgAnimation.FadeInOut(),
+        msgBackground: Color? = null,
+        content: @Composable ShowcaseMsgScope.() -> Unit,
+    ) : this(
+        text = AnnotatedString(""),
+        msgBackground = msgBackground,
+        gravity = gravity,
+        arrow = arrow,
+        enterAnim = enterAnim,
+        exitAnim = exitAnim,
+        content = content
+    )
 }

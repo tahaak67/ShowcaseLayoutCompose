@@ -360,6 +360,42 @@ ShowcaseMsg(
 
 </p>
 
+#### Custom composable messages
+
+Starting from version 1.2.0 a message can be any composable instead of text: an image, a card with an icon, a message with buttons, ... Use the trailing-lambda constructor of `ShowcaseMsg`:
+
+```kotlin
+Modifier.showcase(
+    index = 2,
+    message = ShowcaseMsg(
+        gravity = Gravity.Bottom,
+        arrow = Arrow(color = Color.White)
+    ) {
+        Card {
+            Column(Modifier.padding(16.dp)) {
+                Row {
+                    Icon(Icons.Default.Info, contentDescription = null)
+                    Text("Tap here to open the menu")
+                }
+                Row {
+                    TextButton(onClick = { previous() }, enabled = hasPrevious) { Text("Back") }
+                    TextButton(onClick = { skip() }) { Text("Skip") }
+                    Button(onClick = { next() }) { Text("Next") }
+                }
+            }
+        }
+    }
+)
+```
+
+The same works for the `greeting` parameter and for `showGreeting(ShowcaseMsg { ... })`.
+
+- The composable owns its own look, so `text`, `textStyle` and `roundedCorner` are ignored. `msgBackground` is ignored by `ShowcaseLayout`; in `TargetShowcaseLayout` it still acts as the overlay color of that step.
+- `gravity`, `arrow`, `enterAnim` and `exitAnim` keep working. The arrow starts from the edge of your composable that faces the target, and if `Gravity.Auto` has to move the composable to the other side of the target a `Side.Top`/`Side.Bottom` arrow points at the edge facing it instead of crossing the target. The composable is always kept on screen.
+- The lambda receives a `ShowcaseMsgScope` so buttons inside it can drive the showcase: `next()` advances (or dismisses a single item / greeting), `previous()` goes back when `hasPrevious` is true, and `skip()` ends the whole showcase and calls `onFinish`. `next()` is not affected by `advanceOnTargetTapOnly`.
+- Taps on parts of the composable that are not clickable fall through and advance the showcase exactly like a tap anywhere else. Clickable parts (buttons, cards with `onClick`, ...) handle their own taps.
+- The content is measured at most as wide as the screen minus a small margin, so prefer wrap-content sizes. Native interop views (e.g. `UIKitView`) inside the content are not supported.
+
 #### Arrow
 
 Used with ShowcaseMsg to add an arrow pointing to the target

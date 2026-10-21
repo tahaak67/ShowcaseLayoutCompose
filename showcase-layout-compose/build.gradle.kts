@@ -34,6 +34,9 @@ kotlin {
             implementation(compose.runtime)
             implementation(compose.foundation)
         }
+        commonTest.dependencies {
+            implementation(libs.kotlin.test)
+        }
         getByName("desktopMain").dependencies {
             implementation(compose.desktop.common)
         }
@@ -46,7 +49,7 @@ mavenPublishing {
     publishToMavenCentral()
     signAllPublications()
 
-    coordinates("ly.com.tahaben", "showcase-layout-compose", "1.1.1")
+    coordinates("ly.com.tahaben", "showcase-layout-compose", "1.2.0")
 
     pom {
         name.set("Showcase Layout Compose")
