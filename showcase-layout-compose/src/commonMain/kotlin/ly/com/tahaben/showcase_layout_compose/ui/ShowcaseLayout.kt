@@ -68,6 +68,7 @@ import ly.com.tahaben.showcase_layout_compose.domain.usecase.CARD_INSET_PX
 import ly.com.tahaben.showcase_layout_compose.domain.usecase.MESSAGE_MAX_WIDTH_INSET_PX
 import ly.com.tahaben.showcase_layout_compose.domain.usecase.MessageSide
 import ly.com.tahaben.showcase_layout_compose.domain.usecase.PlacedMessage
+import ly.com.tahaben.showcase_layout_compose.domain.usecase.addRoundedTarget
 import ly.com.tahaben.showcase_layout_compose.domain.usecase.computeShowcaseMessagePlacement
 import ly.com.tahaben.showcase_layout_compose.domain.usecase.isTapInsideTarget
 import ly.com.tahaben.showcase_layout_compose.domain.usecase.validateInitIndex
@@ -220,6 +221,7 @@ fun ShowcaseLayout(
             val customMsgBounds = remember { mutableStateOf<PlacedMessage?>(null) }
 
             /** to animate canvas alpha and current arrow line */
+            val enterAnimation = remember { EnterAnimation() }
             LaunchedEffect(key1 = currentIndex) {
                 if (currentIndex == validatedInitIndex || showCasingItem || isSingleGreeting) {
                     canvasAlpha.animateTo(
@@ -231,77 +233,80 @@ fun ShowcaseLayout(
                 customMsgBounds.value = null
                 arrowAnimDuration = message?.arrow?.animationDuration
                 isArrowDelayOver = false
-                if (message?.arrow != null) {
-                    /** a small delay between moving to new target and drawing the next arrow */
-                    delay(animationDuration.toLong())
-                    isArrowDelayOver = true
-                    launch {
-                        message?.arrow?.let { arrow ->
-                            pathPortion.animateTo(
-                                targetValue = 1f,
-                                animationSpec = tween(
-                                    durationMillis = arrowAnimDuration
-                                        ?: arrow.animationDuration
-                                )
-                            )
-                        }
-                    }
-                    /* animate the arrow */
-                    launch {
-                        message?.arrow?.let { arrow ->
-                            /** show the arrow if anim is false */
-                            if (!arrow.animSize) {
-                                animArrowHead.snapTo(arrow.headSize)
-                            }
-                            /** move the arrow */
-                            animArrow.animateTo(
-                                1f,
-                                tween(
-                                    durationMillis = arrowAnimDuration
-                                        ?: arrow.animationDuration
-                                )
-                            )
-                            /** animate the size of the arrow */
-                            if (arrow.animSize) {
-                                animArrowHead.animateTo(
-                                    arrow.headSize,
-                                    tween(
+                /** cancelled by advance() if the step ends before it is over */
+                enterAnimation.job = launch {
+                    if (message?.arrow != null) {
+                        /** a small delay between moving to new target and drawing the next arrow */
+                        delay(animationDuration.toLong())
+                        isArrowDelayOver = true
+                        launch {
+                            message?.arrow?.let { arrow ->
+                                pathPortion.animateTo(
+                                    targetValue = 1f,
+                                    animationSpec = tween(
                                         durationMillis = arrowAnimDuration
                                             ?: arrow.animationDuration
                                     )
                                 )
                             }
                         }
-                    }
-                }
-                if (currentIndex == validatedInitIndex) {
-                    if (isSingleGreeting) {
-                        message = singleGreetingMsg
-                    }
-                    message?.let { msg ->
-                        if (msg.msgBackground != null)
-                        animMsgAlpha.animateTo(1f, tween(msg.enterAnim.duration))
-                        animMsgTextAlpha.animateTo(1f, tween(msg.enterAnim.duration))
-                    }
-                } else {
-                    scope.showcaseEventListener?.onEvent(
-                        Level.VERBOSE,
-                        TAG + "index:$currentIndex enterAnim: ${message?.enterAnim}"
-                    )
-                    message?.let { msg ->
-                        when (msg.enterAnim) {
-                            is MsgAnimation.FadeInOut -> {
-                                val duration = msg.enterAnim.duration
-                                if (msg.msgBackground != null)
-                                animMsgAlpha.animateTo(1f, tween(duration))
-                                animMsgTextAlpha.animateTo(1f, tween(duration))
+                        /* animate the arrow */
+                        launch {
+                            message?.arrow?.let { arrow ->
+                                /** show the arrow if anim is false */
+                                if (!arrow.animSize) {
+                                    animArrowHead.snapTo(arrow.headSize)
+                                }
+                                /** move the arrow */
+                                animArrow.animateTo(
+                                    1f,
+                                    tween(
+                                        durationMillis = arrowAnimDuration
+                                            ?: arrow.animationDuration
+                                    )
+                                )
+                                /** animate the size of the arrow */
+                                if (arrow.animSize) {
+                                    animArrowHead.animateTo(
+                                        arrow.headSize,
+                                        tween(
+                                            durationMillis = arrowAnimDuration
+                                                ?: arrow.animationDuration
+                                        )
+                                    )
+                                }
                             }
+                        }
+                    }
+                    if (currentIndex == validatedInitIndex) {
+                        if (isSingleGreeting) {
+                            message = singleGreetingMsg
+                        }
+                        message?.let { msg ->
+                            if (msg.msgBackground != null)
+                            animMsgAlpha.animateTo(1f, tween(msg.enterAnim.duration))
+                            animMsgTextAlpha.animateTo(1f, tween(msg.enterAnim.duration))
+                        }
+                    } else {
+                        scope.showcaseEventListener?.onEvent(
+                            Level.VERBOSE,
+                            TAG + "index:$currentIndex enterAnim: ${message?.enterAnim}"
+                        )
+                        message?.let { msg ->
+                            when (msg.enterAnim) {
+                                is MsgAnimation.FadeInOut -> {
+                                    val duration = msg.enterAnim.duration
+                                    if (msg.msgBackground != null)
+                                    animMsgAlpha.animateTo(1f, tween(duration))
+                                    animMsgTextAlpha.animateTo(1f, tween(duration))
+                                }
 
-                            is MsgAnimation.None -> {
-                                animMsgAlpha.snapTo(1f)
-                                animMsgTextAlpha.snapTo(1f)
+                                is MsgAnimation.None -> {
+                                    animMsgAlpha.snapTo(1f)
+                                    animMsgTextAlpha.snapTo(1f)
+                                }
+
                             }
-
                         }
                     }
                 }
@@ -324,6 +329,8 @@ fun ShowcaseLayout(
                         onProceed()
                     }
                 }
+                /** a late enter animation would cancel the exit animation below, see [EnterAnimation] */
+                enterAnimation.cancel()
                 coroutineScope.launch {
 
                     /** hide current arrow */
@@ -578,66 +585,7 @@ fun ShowcaseLayout(
 
                                 // Create a path for the target area (rounded rectangle)
                                 val targetPath = Path().apply {
-                                    // Top-left corner
-                                    moveTo(offset.x + cornerRadius.toPx(), offset.y)
-
-                                    // Top edge and top-right corner
-                                    lineTo(offset.x + itemSize.width - cornerRadius.toPx(), offset.y)
-                                    arcTo(
-                                        rect = Rect(
-                                            offset.x + itemSize.width - 2 * cornerRadius.toPx(),
-                                            offset.y,
-                                            offset.x + itemSize.width,
-                                            offset.y + 2 * cornerRadius.toPx()
-                                        ),
-                                        startAngleDegrees = 270f,
-                                        sweepAngleDegrees = 90f,
-                                        forceMoveTo = false
-                                    )
-
-                                    // Right edge and bottom-right corner
-                                    lineTo(offset.x + itemSize.width, offset.y + itemSize.height - cornerRadius.toPx())
-                                    arcTo(
-                                        rect = Rect(
-                                            offset.x + itemSize.width - 2 * cornerRadius.toPx(),
-                                            offset.y + itemSize.height - 2 * cornerRadius.toPx(),
-                                            offset.x + itemSize.width,
-                                            offset.y + itemSize.height
-                                        ),
-                                        startAngleDegrees = 0f,
-                                        sweepAngleDegrees = 90f,
-                                        forceMoveTo = false
-                                    )
-
-                                    // Bottom edge and bottom-left corner
-                                    lineTo(offset.x + cornerRadius.toPx(), offset.y + itemSize.height)
-                                    arcTo(
-                                        rect = Rect(
-                                            offset.x,
-                                            offset.y + itemSize.height - 2 * cornerRadius.toPx(),
-                                            offset.x + 2 * cornerRadius.toPx(),
-                                            offset.y + itemSize.height
-                                        ),
-                                        startAngleDegrees = 90f,
-                                        sweepAngleDegrees = 90f,
-                                        forceMoveTo = false
-                                    )
-
-                                    // Left edge and top-left corner
-                                    lineTo(offset.x, offset.y + cornerRadius.toPx())
-                                    arcTo(
-                                        rect = Rect(
-                                            offset.x,
-                                            offset.y,
-                                            offset.x + 2 * cornerRadius.toPx(),
-                                            offset.y + 2 * cornerRadius.toPx()
-                                        ),
-                                        startAngleDegrees = 180f,
-                                        sweepAngleDegrees = 90f,
-                                        forceMoveTo = false
-                                    )
-
-                                    close()
+                                    addRoundedTarget(Rect(offset, itemSize), cornerRadius.toPx())
                                 }
 
                                 // Create a combined path with a hole

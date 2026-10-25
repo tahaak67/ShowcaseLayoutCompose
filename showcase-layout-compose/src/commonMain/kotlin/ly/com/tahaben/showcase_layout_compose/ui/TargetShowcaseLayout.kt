@@ -32,7 +32,6 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.geometry.CornerRadius
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Rect
-import androidx.compose.ui.geometry.RoundRect
 import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Path
@@ -56,11 +55,14 @@ import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.IntSize
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.round
+import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
 import ly.com.tahaben.showcase_layout_compose.domain.Level
+import ly.com.tahaben.showcase_layout_compose.domain.usecase.addRoundedTarget
 import ly.com.tahaben.showcase_layout_compose.domain.usecase.computeTargetLayoutMessagePlacement
+import ly.com.tahaben.showcase_layout_compose.domain.usecase.coveringRadius
 import ly.com.tahaben.showcase_layout_compose.domain.usecase.isTapInsideTarget
 import ly.com.tahaben.showcase_layout_compose.domain.usecase.targetLayoutMessageMaxWidth
 import ly.com.tahaben.showcase_layout_compose.domain.usecase.validateInitIndex
@@ -240,8 +242,10 @@ fun TargetShowcaseLayout(
                 }
             }
 
+            val enterAnimation = remember { EnterAnimation() }
             LaunchedEffect(currentIndex) {
-
+                /** cancelled by advance() if the step ends before the transition is over */
+                enterAnimation.job = coroutineContext[Job]
                 if (currentIndex == 0 || isSingleGreeting) {
                     //canvasAlpha.snapTo(0f)
                     canvasAlpha.animateTo(
@@ -378,6 +382,8 @@ fun TargetShowcaseLayout(
                         onProceed()
                     }
                 }
+                /** a late enter animation would cancel the exit animations below, see [EnterAnimation] */
+                enterAnimation.cancel()
                 if (showCasingItem) {
                     val shrinkDuration = animationDuration
 
@@ -685,7 +691,7 @@ fun TargetShowcaseLayout(
 
                 // Initial calculation of outer circle dimensions (will be adjusted based on text)
                 // Set the outer circle radius to half of the canvas width
-                val outerRadius = max(size.width, size.height) / 2
+                val outerRadius = coveringRadius(itemCenter, size)
                 val outerLeft = itemCenter.x - outerRadius
                 val outerTop = itemCenter.y - outerRadius
                 val outerRight = itemCenter.x + outerRadius
@@ -795,74 +801,7 @@ fun TargetShowcaseLayout(
                                         right = itemCenter.x + rectHalfWidth,
                                         bottom = itemCenter.y + rectHalfHeight
                                     )
-                                    RoundRect(
-                                        left = itemCenter.x - rectHalfWidth,
-                                        top = itemCenter.y - rectHalfHeight,
-                                        right = itemCenter.x + rectHalfWidth,
-                                        bottom = itemCenter.y + rectHalfHeight,
-                                    )
-
-                                    val cornerRadiusPx = with(localDensity) {
-                                        cornerRadius.toPx()
-                                    }
-
-                                    // Top-left arc
-                                    moveTo(rect.left, rect.top + cornerRadiusPx)
-                                    arcTo(
-                                        rect = Rect(
-                                            left = rect.left,
-                                            top = rect.top,
-                                            right = rect.left + cornerRadiusPx * 2,
-                                            bottom = rect.top + cornerRadiusPx * 2
-                                        ),
-                                        startAngleDegrees = 180f,
-                                        sweepAngleDegrees = 90f,
-                                        forceMoveTo = false
-                                    )
-
-                                    // Top-right arc
-                                    lineTo(rect.right - cornerRadiusPx, rect.top)
-                                    arcTo(
-                                        rect = Rect(
-                                            left = rect.right - cornerRadiusPx * 2,
-                                            top = rect.top,
-                                            right = rect.right,
-                                            bottom = rect.top + cornerRadiusPx * 2
-                                        ),
-                                        startAngleDegrees = 270f,
-                                        sweepAngleDegrees = 90f,
-                                        forceMoveTo = false
-                                    )
-
-                                    // Bottom-right arc
-                                    lineTo(rect.right, rect.bottom - cornerRadiusPx)
-                                    arcTo(
-                                        rect = Rect(
-                                            left = rect.right - cornerRadiusPx * 2,
-                                            top = rect.bottom - cornerRadiusPx * 2,
-                                            right = rect.right,
-                                            bottom = rect.bottom
-                                        ),
-                                        startAngleDegrees = 0f,
-                                        sweepAngleDegrees = 90f,
-                                        forceMoveTo = false
-                                    )
-
-                                    // Bottom-left arc
-                                    lineTo(rect.left + cornerRadiusPx, rect.bottom)
-                                    arcTo(
-                                        rect = Rect(
-                                            left = rect.left,
-                                            top = rect.bottom - cornerRadiusPx * 2,
-                                            right = rect.left + cornerRadiusPx * 2,
-                                            bottom = rect.bottom
-                                        ),
-                                        startAngleDegrees = 90f,
-                                        sweepAngleDegrees = 90f,
-                                        forceMoveTo = false
-                                    )
-
-                                    close()
+                                    addRoundedTarget(rect, with(localDensity) { cornerRadius.toPx() })
                                 }
 
                                 else -> {
@@ -925,65 +864,7 @@ fun TargetShowcaseLayout(
                                         right = itemCenter.x + (rectHalfWidth + pulseRadius.value),
                                         bottom = itemCenter.y + (rectHalfHeight + pulseRadius.value)
                                     )
-                                    val cornerRadiusPx = cornerRadius.toPx()
-
-                                    // Top-left arc
-                                    moveTo(rect.left, rect.top + cornerRadiusPx)
-                                    arcTo(
-                                        rect = Rect(
-                                            left = rect.left,
-                                            top = rect.top,
-                                            right = rect.left + cornerRadiusPx * 2,
-                                            bottom = rect.top + cornerRadiusPx * 2
-                                        ),
-                                        startAngleDegrees = 180f,
-                                        sweepAngleDegrees = 90f,
-                                        forceMoveTo = false
-                                    )
-
-                                    // Top-right arc
-                                    lineTo(rect.right - cornerRadiusPx, rect.top)
-                                    arcTo(
-                                        rect = Rect(
-                                            left = rect.right - cornerRadiusPx * 2,
-                                            top = rect.top,
-                                            right = rect.right,
-                                            bottom = rect.top + cornerRadiusPx * 2
-                                        ),
-                                        startAngleDegrees = 270f,
-                                        sweepAngleDegrees = 90f,
-                                        forceMoveTo = false
-                                    )
-
-                                    // Bottom-right arc
-                                    lineTo(rect.right, rect.bottom - cornerRadiusPx)
-                                    arcTo(
-                                        rect = Rect(
-                                            left = rect.right - cornerRadiusPx * 2,
-                                            top = rect.bottom - cornerRadiusPx * 2,
-                                            right = rect.right,
-                                            bottom = rect.bottom
-                                        ),
-                                        startAngleDegrees = 0f,
-                                        sweepAngleDegrees = 90f,
-                                        forceMoveTo = false
-                                    )
-
-                                    // Bottom-left arc
-                                    lineTo(rect.left + cornerRadiusPx, rect.bottom)
-                                    arcTo(
-                                        rect = Rect(
-                                            left = rect.left,
-                                            top = rect.bottom - cornerRadiusPx * 2,
-                                            right = rect.left + cornerRadiusPx * 2,
-                                            bottom = rect.bottom
-                                        ),
-                                        startAngleDegrees = 90f,
-                                        sweepAngleDegrees = 90f,
-                                        forceMoveTo = false
-                                    )
-
-                                    close()
+                                    addRoundedTarget(rect, cornerRadius.toPx())
                                 }
 
                                 else -> {
@@ -1023,65 +904,7 @@ fun TargetShowcaseLayout(
                                         right = itemCenter.x + rectHalfWidth,
                                         bottom = itemCenter.y + rectHalfHeight
                                     )
-                                    val cornerRadiusPx = cornerRadius.toPx()
-
-                                    // Top-left arc
-                                    moveTo(rect.left, rect.top + cornerRadiusPx)
-                                    arcTo(
-                                        rect = Rect(
-                                            left = rect.left,
-                                            top = rect.top,
-                                            right = rect.left + cornerRadiusPx * 2,
-                                            bottom = rect.top + cornerRadiusPx * 2
-                                        ),
-                                        startAngleDegrees = 180f,
-                                        sweepAngleDegrees = 90f,
-                                        forceMoveTo = false
-                                    )
-
-                                    // Top-right arc
-                                    lineTo(rect.right - cornerRadiusPx, rect.top)
-                                    arcTo(
-                                        rect = Rect(
-                                            left = rect.right - cornerRadiusPx * 2,
-                                            top = rect.top,
-                                            right = rect.right,
-                                            bottom = rect.top + cornerRadiusPx * 2
-                                        ),
-                                        startAngleDegrees = 270f,
-                                        sweepAngleDegrees = 90f,
-                                        forceMoveTo = false
-                                    )
-
-                                    // Bottom-right arc
-                                    lineTo(rect.right, rect.bottom - cornerRadiusPx)
-                                    arcTo(
-                                        rect = Rect(
-                                            left = rect.right - cornerRadiusPx * 2,
-                                            top = rect.bottom - cornerRadiusPx * 2,
-                                            right = rect.right,
-                                            bottom = rect.bottom
-                                        ),
-                                        startAngleDegrees = 0f,
-                                        sweepAngleDegrees = 90f,
-                                        forceMoveTo = false
-                                    )
-
-                                    // Bottom-left arc
-                                    lineTo(rect.left + cornerRadiusPx, rect.bottom)
-                                    arcTo(
-                                        rect = Rect(
-                                            left = rect.left,
-                                            top = rect.bottom - cornerRadiusPx * 2,
-                                            right = rect.left + cornerRadiusPx * 2,
-                                            bottom = rect.bottom
-                                        ),
-                                        startAngleDegrees = 90f,
-                                        sweepAngleDegrees = 90f,
-                                        forceMoveTo = false
-                                    )
-
-                                    close()
+                                    addRoundedTarget(rect, cornerRadius.toPx())
                                 }
 
                                 else -> {
@@ -1187,7 +1010,7 @@ fun TargetShowcaseLayout(
                                         animatedX.value + itemSize.width / 2,
                                         animatedY.value + itemSize.height / 2
                                     )
-                                    val outerRadius = max(canvasSize.width, canvasSize.height) / 2
+                                    val outerRadius = coveringRadius(itemCenter, canvasSize)
                                     computeTargetLayoutMessagePlacement(
                                         messageSize = IntSize(placeable.width, placeable.height),
                                         itemCenter = itemCenter,
