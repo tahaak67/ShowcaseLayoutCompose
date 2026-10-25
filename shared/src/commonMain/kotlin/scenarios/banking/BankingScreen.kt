@@ -13,7 +13,6 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
@@ -27,7 +26,6 @@ import androidx.compose.material.icons.outlined.AccountBalance
 import androidx.compose.material.icons.outlined.Add
 import androidx.compose.material.icons.outlined.BarChart
 import androidx.compose.material.icons.outlined.CallReceived
-import androidx.compose.material.icons.outlined.Check
 import androidx.compose.material.icons.outlined.CreditCard
 import androidx.compose.material.icons.outlined.DirectionsBus
 import androidx.compose.material.icons.outlined.HelpOutline
@@ -35,18 +33,12 @@ import androidx.compose.material.icons.outlined.LocalCafe
 import androidx.compose.material.icons.outlined.Notifications
 import androidx.compose.material.icons.outlined.Person
 import androidx.compose.material.icons.outlined.QrCodeScanner
-import androidx.compose.material.icons.outlined.Replay
 import androidx.compose.material.icons.outlined.ShoppingBasket
-import androidx.compose.material.icons.outlined.TouchApp
 import androidx.compose.material.icons.outlined.Visibility
 import androidx.compose.material.icons.outlined.VisibilityOff
 import androidx.compose.material.icons.outlined.Work
-import androidx.compose.material3.Button
-import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
-import androidx.compose.material3.DropdownMenu
-import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
@@ -76,7 +68,6 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
@@ -91,6 +82,10 @@ import ly.com.tahaben.showcase_layout_compose.model.ShowcaseMsgScope
 import ly.com.tahaben.showcase_layout_compose.model.TargetShape
 import ly.com.tahaben.showcase_layout_compose.ui.ShowcaseLayoutDefaults
 import ly.com.tahaben.showcase_layout_compose.ui.TargetShowcaseLayout
+import scenarios.TourCard
+import scenarios.TourOptionsMenu
+import scenarios.TourPalette
+import scenarios.WelcomeCard
 
 // Lumen Bank palette
 private val Navy = Color(0xFF1E2A5A)
@@ -223,10 +218,11 @@ fun BankingScreen(onBack: () -> Unit) {
                             ),
                             hidden = balanceHidden,
                             onToggleHidden = { balanceHidden = !balanceHidden },
-                            // Step 2: the eye icon, locked until the balance is hidden
+                            // Step 2: the eye icon, locked until the balance is hidden. The card always
+                            // shows the hint so it does not change while it fades out.
                             eyeModifier = Modifier.showcase(
                                 index = 2,
-                                message = tourMessage { TourCard(step = 2, scope = this, locked = !balanceHidden) },
+                                message = tourMessage { TourCard(step = 2, scope = this, locked = true) },
                                 canProceed = balanceHidden
                             )
                         )
@@ -305,42 +301,18 @@ private fun Header(
             IconButton(onClick = { menuOpen = true }) {
                 Icon(Icons.Outlined.HelpOutline, contentDescription = "Tour options", tint = Ink)
             }
-            DropdownMenu(expanded = menuOpen, onDismissRequest = { menuOpen = false }) {
-                DropdownMenuItem(
-                    text = { Text("Replay tour") },
-                    leadingIcon = { Icon(Icons.Outlined.Replay, contentDescription = null) },
-                    onClick = { menuOpen = false; onReplay() }
-                )
-                HorizontalDivider()
-                LayoutMenuItem("TargetShowcaseLayout", "Spotlight, morphs between targets", useTargetLayout) {
-                    menuOpen = false; onLayoutChange(true)
-                }
-                LayoutMenuItem("ShowcaseLayout", "Full-screen overlay with cutout", !useTargetLayout) {
-                    menuOpen = false; onLayoutChange(false)
-                }
-            }
+            TourOptionsMenu(
+                expanded = menuOpen,
+                onDismiss = { menuOpen = false },
+                useTargetLayout = useTargetLayout,
+                onReplay = onReplay,
+                onLayoutChange = onLayoutChange
+            )
         }
         IconButton(onClick = {}) {
             Icon(Icons.Outlined.Notifications, contentDescription = "Notifications", tint = Ink)
         }
     }
-}
-
-@Composable
-private fun LayoutMenuItem(title: String, subtitle: String, selected: Boolean, onClick: () -> Unit) {
-    DropdownMenuItem(
-        text = {
-            Column {
-                Text(title)
-                Text(subtitle, style = MaterialTheme.typography.bodySmall, color = Slate)
-            }
-        },
-        leadingIcon = {
-            if (selected) Icon(Icons.Outlined.Check, contentDescription = "Selected", tint = Indigo)
-            else Spacer(Modifier.size(24.dp))
-        },
-        onClick = onClick
-    )
 }
 
 @Composable
@@ -498,57 +470,26 @@ private fun TransactionRow(tx: Transaction) {
 }
 
 // ---------------------------------------------------------------------------------------------
-// Tour UI: the greeting and the per-step cards shown by the showcase layout
+// Tour copy. The cards themselves are shared by every scenario, see scenarios/TourUi.kt
 // ---------------------------------------------------------------------------------------------
 
+private val BankTourPalette = TourPalette(
+    card = Color.White,
+    title = Ink,
+    body = Slate,
+    accent = Indigo,
+    accentSoft = Color(0xFFE0E7FF),
+)
+
 @Composable
-private fun ShowcaseMsgScope.WelcomeCard() {
-    Card(
-        modifier = Modifier.width(300.dp),
-        shape = RoundedCornerShape(24.dp),
-        colors = CardDefaults.cardColors(containerColor = Color.White)
-    ) {
-        Column(
-            modifier = Modifier.padding(24.dp),
-            horizontalAlignment = Alignment.CenterHorizontally,
-            verticalArrangement = Arrangement.spacedBy(12.dp)
-        ) {
-            Box(
-                modifier = Modifier
-                    .size(64.dp)
-                    .background(Brush.linearGradient(listOf(Indigo, Violet)), CircleShape),
-                contentAlignment = Alignment.Center
-            ) {
-                Icon(Icons.Outlined.AccountBalance, contentDescription = null, tint = Color.White, modifier = Modifier.size(32.dp))
-            }
-            Text(
-                "Welcome to Lumen Bank",
-                style = MaterialTheme.typography.titleLarge,
-                fontWeight = FontWeight.Bold,
-                color = Ink,
-                textAlign = TextAlign.Center
-            )
-            Text(
-                "Your new home screen in four quick steps. It takes less than a minute.",
-                style = MaterialTheme.typography.bodyMedium,
-                color = Slate,
-                textAlign = TextAlign.Center
-            )
-            Spacer(Modifier.height(4.dp))
-            Button(
-                onClick = { next() },
-                modifier = Modifier.fillMaxWidth(),
-                colors = ButtonDefaults.buttonColors(containerColor = Indigo),
-                shape = RoundedCornerShape(14.dp)
-            ) {
-                Text("Start the tour")
-            }
-            TextButton(onClick = { skip() }) {
-                Text("Maybe later", color = Slate)
-            }
-        }
-    }
-}
+private fun ShowcaseMsgScope.WelcomeCard() = WelcomeCard(
+    scope = this,
+    palette = BankTourPalette,
+    icon = Icons.Outlined.AccountBalance,
+    iconBrush = Brush.linearGradient(listOf(Indigo, Violet)),
+    title = "Welcome to Lumen Bank",
+    body = "Your new home screen in four quick steps. It takes less than a minute."
+)
 
 private data class TourStep(val title: String, val body: String)
 
@@ -571,78 +512,14 @@ private val tourSteps = listOf(
     ),
 )
 
-/**
- * The message card for a tour step. A [locked] step hides the Next button and shows a hint instead:
- * the showcase moves on by itself once the user performs the action.
- */
 @Composable
-private fun TourCard(step: Int, scope: ShowcaseMsgScope, locked: Boolean = false) {
-    val content = tourSteps[step - 1]
-    Card(
-        modifier = Modifier.width(300.dp),
-        shape = RoundedCornerShape(20.dp),
-        colors = CardDefaults.cardColors(containerColor = Color.White)
-    ) {
-        Column(modifier = Modifier.padding(20.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
-            Row(verticalAlignment = Alignment.CenterVertically) {
-                StepDots(current = step, total = TOUR_STEPS)
-                Spacer(Modifier.weight(1f))
-                Text("$step of $TOUR_STEPS", style = MaterialTheme.typography.labelMedium, color = Slate)
-            }
-            Text(content.title, style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold, color = Ink)
-            Text(content.body, style = MaterialTheme.typography.bodyMedium, color = Slate)
-            Spacer(Modifier.height(2.dp))
-            if (locked) {
-                Row(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .background(Color(0xFFEEF2FF), RoundedCornerShape(12.dp))
-                        .padding(horizontal = 12.dp, vertical = 10.dp),
-                    verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.spacedBy(8.dp)
-                ) {
-                    Icon(Icons.Outlined.TouchApp, contentDescription = null, tint = Indigo, modifier = Modifier.size(20.dp))
-                    Text(
-                        "Tap the eye icon to continue",
-                        style = MaterialTheme.typography.labelLarge,
-                        color = Indigo,
-                        modifier = Modifier.weight(1f)
-                    )
-                    TextButton(onClick = { scope.skip() }, contentPadding = ButtonDefaults.TextButtonContentPadding) {
-                        Text("Skip", color = Slate)
-                    }
-                }
-            } else {
-                Row(modifier = Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
-                    if (step > 1 && scope.hasPrevious) {
-                        TextButton(onClick = { scope.previous() }) { Text("Back", color = Slate) }
-                    }
-                    Spacer(Modifier.weight(1f))
-                    TextButton(onClick = { scope.skip() }) { Text("Skip", color = Slate) }
-                    Button(
-                        onClick = { scope.next() },
-                        colors = ButtonDefaults.buttonColors(containerColor = Indigo),
-                        shape = RoundedCornerShape(12.dp)
-                    ) {
-                        Text(if (step == TOUR_STEPS) "Finish" else "Next")
-                    }
-                }
-            }
-        }
-    }
-}
-
-@Composable
-private fun StepDots(current: Int, total: Int) {
-    Row(horizontalArrangement = Arrangement.spacedBy(6.dp), verticalAlignment = Alignment.CenterVertically) {
-        repeat(total) { i ->
-            val active = i + 1 == current
-            Box(
-                modifier = Modifier
-                    .height(6.dp)
-                    .width(if (active) 18.dp else 6.dp)
-                    .background(if (active) Indigo else Color(0xFFE0E7FF), RoundedCornerShape(50))
-            )
-        }
-    }
-}
+private fun TourCard(step: Int, scope: ShowcaseMsgScope, locked: Boolean = false) = TourCard(
+    step = step,
+    total = TOUR_STEPS,
+    title = tourSteps[step - 1].title,
+    body = tourSteps[step - 1].body,
+    scope = scope,
+    palette = BankTourPalette,
+    locked = locked,
+    lockedHint = "Tap the eye icon to continue"
+)

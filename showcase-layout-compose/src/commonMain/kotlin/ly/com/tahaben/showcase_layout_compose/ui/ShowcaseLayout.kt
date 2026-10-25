@@ -142,7 +142,11 @@ fun ShowcaseLayout(
     val currentContent by rememberUpdatedState(content)
     val resetDelay by derivedStateOf { animationDuration.toLong() + INDEX_RESET_DELAY }
     val layoutCoordinatesState = remember { mutableStateOf<LayoutCoordinates?>(null) }
-    val scope = ShowcaseScopeImpl(greeting)
+    /** Remembered: the scope owns the map of registered targets, which the showcase modifiers only
+     * refill on the next layout pass. A new scope per recomposition left that map empty for a frame,
+     * long enough for a custom message to be removed and re-added at full alpha mid fade-out. */
+    val scope = remember { ShowcaseScopeImpl(greeting) }
+    scope.setGreeting(greeting)
     scope.layoutCoordinatesState = layoutCoordinatesState
     /** per-step canProceed flags and onProceed callbacks, published by the showcase modifiers */
     val stepRegistry = remember { StepRegistry() }
@@ -1140,6 +1144,14 @@ class ShowcaseScopeImpl(greeting: ShowcaseMsg?) : ShowcaseScope {
 
     init {
         showcaseDataHashMap[0] = ShowcaseData(IntSize(0, 0), Offset(0f, 0f), greeting)
+    }
+
+    /** Index 0 is the greeting; it has no target of its own, so only its message can change. */
+    internal fun setGreeting(greeting: ShowcaseMsg?) {
+        val current = showcaseDataHashMap[0]
+        if (current?.message != greeting) {
+            showcaseDataHashMap[0] = ShowcaseData(IntSize(0, 0), Offset(0f, 0f), greeting)
+        }
     }
 
     fun getSizeFor(index: Int): Size {

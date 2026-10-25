@@ -62,7 +62,6 @@ enum class Scenario(
         tagline = "A dark music player: circular targets, light overlay and a pulsing play button.",
         icon = Icons.Outlined.MusicNote,
         accent = Color(0xFFB91C1C),
-        available = false,
     ),
     CHAT(
         title = "Messages",

@@ -8,6 +8,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.ExperimentalComposeUiApi
 import androidx.compose.ui.backhandler.BackHandler
 import scenarios.banking.BankingScreen
+import scenarios.music.MusicScreen
 
 /**
  * Entry point of the demo on every platform. Shows the scenario picker first; each scenario is a
@@ -28,7 +29,8 @@ fun App(openUrl: (String) -> Boolean, onWebLoadFinish: () -> Unit = {}) {
             null -> ScenarioPickerScreen(openUrl = openUrl, onOpen = { scenario = it })
             Scenario.BANKING -> BankingScreen(onBack = backToPicker)
             Scenario.PLAYGROUND -> PlaygroundScreen(openUrl = openUrl, onBack = backToPicker)
-            Scenario.MUSIC, Scenario.CHAT -> ScenarioPickerScreen(openUrl = openUrl, onOpen = { scenario = it })
+            Scenario.MUSIC -> MusicScreen(onBack = backToPicker)
+            Scenario.CHAT -> ScenarioPickerScreen(openUrl = openUrl, onOpen = { scenario = it })
         }
     }
 }

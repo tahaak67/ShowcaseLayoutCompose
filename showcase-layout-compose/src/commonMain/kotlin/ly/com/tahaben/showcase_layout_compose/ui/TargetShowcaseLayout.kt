@@ -132,7 +132,11 @@ fun TargetShowcaseLayout(
     }
     val currentContent by rememberUpdatedState(content)
     val layoutCoordinatesState = remember { mutableStateOf<LayoutCoordinates?>(null) }
-    val scope = ShowcaseScopeImpl(greeting)
+    /** Remembered: the scope owns the map of registered targets, which the showcase modifiers only
+     * refill on the next layout pass. A new scope per recomposition left that map empty for a frame,
+     * long enough for a custom message to be removed and re-added at full alpha mid fade-out. */
+    val scope = remember { ShowcaseScopeImpl(greeting) }
+    scope.setGreeting(greeting)
     scope.layoutCoordinatesState = layoutCoordinatesState
     /** per-step canProceed flags and onProceed callbacks, published by the showcase modifiers */
     val stepRegistry = remember { StepRegistry() }
