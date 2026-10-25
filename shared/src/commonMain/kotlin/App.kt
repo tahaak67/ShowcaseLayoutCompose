@@ -8,6 +8,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.ExperimentalComposeUiApi
 import androidx.compose.ui.backhandler.BackHandler
 import scenarios.banking.BankingScreen
+import scenarios.chat.ChatScreen
 import scenarios.music.MusicScreen
 
 /**
@@ -30,7 +31,7 @@ fun App(openUrl: (String) -> Boolean, onWebLoadFinish: () -> Unit = {}) {
             Scenario.BANKING -> BankingScreen(onBack = backToPicker)
             Scenario.PLAYGROUND -> PlaygroundScreen(openUrl = openUrl, onBack = backToPicker)
             Scenario.MUSIC -> MusicScreen(onBack = backToPicker)
-            Scenario.CHAT -> ScenarioPickerScreen(openUrl = openUrl, onOpen = { scenario = it })
+            Scenario.CHAT -> ChatScreen(onBack = backToPicker)
         }
     }
 }

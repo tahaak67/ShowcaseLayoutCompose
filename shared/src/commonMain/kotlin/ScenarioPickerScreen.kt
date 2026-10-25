@@ -68,7 +68,6 @@ enum class Scenario(
         tagline = "Learn-by-doing tour of a chat app, driven by step locks.",
         icon = Icons.Outlined.ChatBubbleOutline,
         accent = Color(0xFF047857),
-        available = false,
     ),
     PLAYGROUND(
         title = "Playground",

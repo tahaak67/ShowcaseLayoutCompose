@@ -191,4 +191,36 @@ class MessagePlacementTest {
         // 1080 - 300 - 150
         assertEquals(630f, placement.offset.x)
     }
+
+    // --- gravity in TargetShowcaseLayout -------------------------------------------------------
+
+    private fun targetPlacement(gravity: Gravity, centerY: Float, canvasHeight: Float = 2400f) =
+        computeTargetLayoutMessagePlacement(
+            messageSize = IntSize(800, 400),
+            itemCenter = Offset(540f, centerY),
+            verticalOffset = 100f,
+            outer = Rect(center = Offset(540f, centerY), radius = 3000f),
+            canvasSize = Size(1080f, canvasHeight),
+            gravity = gravity,
+        )
+
+    @Test
+    fun targetLayoutGravityBottomGoesBelowWhenThereIsRoom() {
+        // the message fits above as well, so Auto would have gone above
+        assertEquals(MessageSide.Above, targetPlacement(Gravity.Auto, centerY = 1200f).side)
+        assertEquals(MessageSide.Below, targetPlacement(Gravity.Bottom, centerY = 1200f).side)
+    }
+
+    @Test
+    fun targetLayoutGravityTopGoesAboveWhenThereIsRoom() {
+        assertEquals(MessageSide.Above, targetPlacement(Gravity.Top, centerY = 1200f).side)
+    }
+
+    @Test
+    fun targetLayoutGravityFallsBackToTheOtherSideWhenItDoesNotFit() {
+        // target near the bottom edge: nothing fits below
+        assertEquals(MessageSide.Above, targetPlacement(Gravity.Bottom, centerY = 2300f).side)
+        // target near the top edge: nothing fits above
+        assertEquals(MessageSide.Below, targetPlacement(Gravity.Top, centerY = 100f).side)
+    }
 }

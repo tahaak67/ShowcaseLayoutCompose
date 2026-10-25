@@ -210,14 +210,16 @@ internal fun targetLayoutMessageMaxWidth(canvasSize: Size): Int {
 }
 
 /**
- * Computes where a message goes in `TargetShowcaseLayout` for a (non greeting) target: above the
- * target when it fits, otherwise below, and clamped inside both the screen and the outer circle.
+ * Computes where a message goes in `TargetShowcaseLayout` for a (non greeting) target, clamped
+ * inside both the screen and the outer circle. [gravity] picks the side: `Top` or `Bottom` when
+ * the message fits there (the other side otherwise), `Auto` prefers above when it fits.
  *
  * @param messageSize the measured message: the text bounds, or the custom composable's size.
  * @param itemCenter center of the highlighted target.
  * @param verticalOffset distance from [itemCenter] to the target's top/bottom edge.
  * @param outer bounds of the outer circle around the target.
  * @param canvasSize size of the overlay.
+ * @param gravity the side of the target the message asked for.
  */
 internal fun computeTargetLayoutMessagePlacement(
     messageSize: IntSize,
@@ -225,16 +227,23 @@ internal fun computeTargetLayoutMessagePlacement(
     verticalOffset: Float,
     outer: Rect,
     canvasSize: Size,
+    gravity: Gravity = Gravity.Auto,
     log: (String) -> Unit = {},
 ): MessagePlacement {
     val safetyPadding = TARGET_LAYOUT_SAFETY_PADDING_PX
     val messageHeight = messageSize.height
     val messageWidth = messageSize.width
 
-    // Check if displaying the message above the target would make it go outside the screen bounds
+    // Where the message would start on either side, and whether it stays on screen there
     val textAboveY = itemCenter.y - verticalOffset - messageHeight - safetyPadding * 1.5f
     val textBelowY = itemCenter.y + verticalOffset + safetyPadding * 1.5f
-    val isTextAbove = textAboveY >= safetyPadding
+    val fitsAbove = textAboveY >= safetyPadding
+    val fitsBelow = textBelowY + messageHeight <= canvasSize.height - safetyPadding
+    val isTextAbove = when (gravity) {
+        Gravity.Top -> fitsAbove || !fitsBelow
+        Gravity.Bottom -> !fitsBelow && fitsAbove
+        Gravity.Auto -> fitsAbove
+    }
 
     val textY = if (!isTextAbove) {
         log("Text would be outside screen bounds if displayed above. Displaying below target instead.")

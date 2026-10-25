@@ -66,6 +66,7 @@ import ly.com.tahaben.showcase_layout_compose.domain.usecase.coveringRadius
 import ly.com.tahaben.showcase_layout_compose.domain.usecase.isTapInsideTarget
 import ly.com.tahaben.showcase_layout_compose.domain.usecase.targetLayoutMessageMaxWidth
 import ly.com.tahaben.showcase_layout_compose.domain.usecase.validateInitIndex
+import ly.com.tahaben.showcase_layout_compose.model.Gravity
 import ly.com.tahaben.showcase_layout_compose.model.MsgAnimation
 import ly.com.tahaben.showcase_layout_compose.model.ShowcaseMsg
 import ly.com.tahaben.showcase_layout_compose.model.ShowcaseMsgScope
@@ -952,6 +953,7 @@ fun TargetShowcaseLayout(
                     val verticalOffset = if (targetShape == TargetShape.CIRCLE) circleRadius else rectHalfHeight
                     val placement = computeTargetLayoutMessagePlacement(
                         messageSize = textResult.size,
+                        gravity = msg.gravity,
                         itemCenter = itemCenter,
                         verticalOffset = verticalOffset,
                         outer = Rect(outerLeft, outerTop, outerRight, outerBottom),
@@ -1017,6 +1019,7 @@ fun TargetShowcaseLayout(
                                     val outerRadius = coveringRadius(itemCenter, canvasSize)
                                     computeTargetLayoutMessagePlacement(
                                         messageSize = IntSize(placeable.width, placeable.height),
+                                        gravity = message?.gravity ?: Gravity.Auto,
                                         itemCenter = itemCenter,
                                         verticalOffset = if (targetShape == TargetShape.CIRCLE) circleRadius else itemSize.height / 2,
                                         outer = Rect(center = itemCenter, radius = outerRadius),
