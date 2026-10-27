@@ -1,20 +1,47 @@
 package ly.com.tahaben.showcase_layout_compose.ui
 
 import androidx.compose.animation.animateColorAsState
-import androidx.compose.animation.core.*
+import androidx.compose.animation.core.Animatable
+import androidx.compose.animation.core.AnimationVector1D
+import androidx.compose.animation.core.FastOutLinearInEasing
+import androidx.compose.animation.core.FastOutSlowInEasing
+import androidx.compose.animation.core.RepeatMode
+import androidx.compose.animation.core.infiniteRepeatable
+import androidx.compose.animation.core.tween
 import androidx.compose.foundation.Canvas
+import androidx.compose.foundation.gestures.awaitEachGesture
+import androidx.compose.foundation.gestures.awaitFirstDown
 import androidx.compose.foundation.gestures.detectTapGestures
+import androidx.compose.foundation.gestures.waitForUpOrCancellation
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.runtime.*
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.collectAsState
+import androidx.compose.runtime.derivedStateOf
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableIntStateOf
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.rememberUpdatedState
+import androidx.compose.runtime.setValue
+import androidx.compose.runtime.snapshotFlow
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.geometry.*
+import androidx.compose.ui.geometry.CornerRadius
+import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.geometry.Rect
+import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Path
 import androidx.compose.ui.graphics.PathOperation
 import androidx.compose.ui.graphics.drawscope.Fill
+import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.input.pointer.PointerEventPass
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.layout.LayoutCoordinates
+import androidx.compose.ui.layout.layout
 import androidx.compose.ui.layout.onGloballyPositioned
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.semantics.semantics
@@ -25,14 +52,24 @@ import androidx.compose.ui.text.rememberTextMeasurer
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.Constraints
 import androidx.compose.ui.unit.Dp
+import androidx.compose.ui.unit.IntSize
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.round
+import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
 import ly.com.tahaben.showcase_layout_compose.domain.Level
+import ly.com.tahaben.showcase_layout_compose.domain.usecase.addRoundedTarget
+import ly.com.tahaben.showcase_layout_compose.domain.usecase.computeTargetLayoutMessagePlacement
+import ly.com.tahaben.showcase_layout_compose.domain.usecase.coveringRadius
 import ly.com.tahaben.showcase_layout_compose.domain.usecase.isTapInsideTarget
+import ly.com.tahaben.showcase_layout_compose.domain.usecase.targetLayoutMessageMaxWidth
 import ly.com.tahaben.showcase_layout_compose.domain.usecase.validateInitIndex
+import ly.com.tahaben.showcase_layout_compose.model.Gravity
 import ly.com.tahaben.showcase_layout_compose.model.MsgAnimation
 import ly.com.tahaben.showcase_layout_compose.model.ShowcaseMsg
+import ly.com.tahaben.showcase_layout_compose.model.ShowcaseMsgScope
 import ly.com.tahaben.showcase_layout_compose.model.TargetShape
 import kotlin.math.max
 import kotlin.math.min
@@ -96,8 +133,16 @@ fun TargetShowcaseLayout(
     }
     val currentContent by rememberUpdatedState(content)
     val layoutCoordinatesState = remember { mutableStateOf<LayoutCoordinates?>(null) }
-    val scope = ShowcaseScopeImpl(greeting)
+    /** Remembered: the scope owns the map of registered targets, which the showcase modifiers only
+     * refill on the next layout pass. A new scope per recomposition left that map empty for a frame,
+     * long enough for a custom message to be removed and re-added at full alpha mid fade-out. */
+    val scope = remember { ShowcaseScopeImpl(greeting) }
+    scope.setGreeting(greeting)
     scope.layoutCoordinatesState = layoutCoordinatesState
+    /** per-step canProceed flags and onProceed callbacks, published by the showcase modifiers */
+    val stepRegistry = remember { StepRegistry() }
+    scope.stepRegistry = stepRegistry
+    val stepConditions = stepRegistry.conditions
     scope.currentContent()
     val localDensity = LocalDensity.current
     var singleGreetingMsg by remember { mutableStateOf<ShowcaseMsg?>(null) }
@@ -202,8 +247,10 @@ fun TargetShowcaseLayout(
                 }
             }
 
+            val enterAnimation = remember { EnterAnimation() }
             LaunchedEffect(currentIndex) {
-
+                /** cancelled by advance() if the step ends before the transition is over */
+                enterAnimation.job = coroutineContext[Job]
                 if (currentIndex == 0 || isSingleGreeting) {
                     //canvasAlpha.snapTo(0f)
                     canvasAlpha.animateTo(
@@ -323,172 +370,246 @@ fun TargetShowcaseLayout(
                 }
             }
 
+            /** true when there is a target before the current one; never during a single item / greeting */
+            fun canGoBack() = currentIndex > validatedInitIndex && !showCasingItem && !isSingleGreeting
+
+            /** Moves the showcase forward, back or to the end. Shared by the tap handler and by
+             * [ShowcaseMsgScope] so custom message content can drive the showcase. */
+            fun advance(action: StepAction) {
+                if (action == StepAction.PREVIOUS && !canGoBack()) {
+                    scope.showcaseEventListener?.onEvent(Level.VERBOSE, TAG + "no previous target to go back to")
+                    return
+                }
+                /** the step is over, whatever ends it: let the caller react (hide the keyboard, ...) */
+                if (!isSingleGreeting && currentIndex != 0) {
+                    stepRegistry.onProceed[currentIndex]?.let { onProceed ->
+                        scope.showcaseEventListener?.onEvent(Level.VERBOSE, TAG + "index:$currentIndex onProceed")
+                        onProceed()
+                    }
+                }
+                /** a late enter animation would cancel the exit animations below, see [EnterAnimation] */
+                enterAnimation.cancel()
+                if (showCasingItem) {
+                    val shrinkDuration = animationDuration
+
+                    // Shrink both width and height simultaneously and shrink the outer circle
+                    coroutineScope.launch {
+                        handleMessageExitAnimation(message, messageTextAlpha, animationDuration)
+                        // Shrink the outer circle
+                        launch {
+                            outerAnimatable.animateTo(
+                                0f,
+                                animationSpec = tween(
+                                    durationMillis = shrinkDuration,
+                                    easing = FastOutSlowInEasing
+                                )
+                            )
+                        }
+
+                        // Fade out the entire canvas to make the circle completely disappear
+                        launch {
+                            canvasAlpha.animateTo(
+                                0f,
+                                animationSpec = tween(
+                                    durationMillis = shrinkDuration,
+                                    easing = FastOutSlowInEasing
+                                )
+                            )
+                        }
+
+                        // Wait for animations to complete
+                        delay((animationDuration / 3).toLong())
+
+                        // Finish showcasing the single item
+                        scope.showcaseItemFinished()
+                        currentIndex = validatedInitIndex
+                    }
+                    return
+                } else if (isSingleGreeting) {
+                    coroutineScope.launch {
+                        handleMessageExitAnimation(singleGreetingMsg, messageTextAlpha, animationDuration)
+
+                        // Fade out the entire canvas to make the circle completely disappear
+                        launch {
+                            canvasAlpha.animateTo(
+                                0f,
+                                animationSpec = tween(
+                                    durationMillis = animationDuration / 3,
+                                    easing = FastOutSlowInEasing
+                                )
+                            )
+                        }
+
+                        // Wait for animations to complete
+                        delay((animationDuration / 3).toLong())
+
+                        // Finish showcasing the greeting
+                        scope.showGreetingFinished()
+
+                        currentIndex = validatedInitIndex
+                    }
+                    return
+                } else if (action != StepAction.SKIP && (action == StepAction.PREVIOUS || currentIndex + 1 < scope.getHashMapSize())) {
+                    val step = if (action == StepAction.PREVIOUS) -1 else 1
+                    if (!animateToNextTarget) {
+                        // Shrink at current location, then move to new location, then expand
+                        // Step 1: Shrink at current location
+                        val shrinkDuration = animationDuration
+
+                        // Shrink both width and height simultaneously and shrink the outer circle
+                        coroutineScope.launch {
+                            handleMessageExitAnimation(message, messageTextAlpha, animationDuration)
+
+                            // Shrink the outer circle
+                            launch {
+                                outerAnimatable.animateTo(
+                                    0f,
+                                    animationSpec = tween(
+                                        durationMillis = shrinkDuration,
+                                        easing = FastOutSlowInEasing
+                                    )
+                                )
+                            }
+
+                            // Fade out the entire canvas to make the circle completely disappear
+                            launch {
+                                canvasAlpha.animateTo(
+                                    0f,
+                                    animationSpec = tween(
+                                        durationMillis = shrinkDuration,
+                                        easing = FastOutSlowInEasing
+                                    )
+                                )
+                            }
+
+                            // Wait for animations to complete
+                            delay(shrinkDuration.toLong())
+
+                            // Move to the next / previous target
+                            currentIndex += step
+
+                        }
+
+                    } else {
+                        // When animateToNextTarget is true, we don't want to fade out the outer circle
+                        // we just handle message animation if any then move to the next target
+                        coroutineScope.launch {
+                            handleMessageExitAnimation(message, messageTextAlpha, animationDuration)
+
+                            // Move to the next / previous target
+                            currentIndex += step
+                        }
+                    }
+
+                } else {
+                    // This is the last target, finish the showcase
+
+                    coroutineScope.launch {
+                        val shrinkDuration = animationDuration / 2
+                        handleMessageExitAnimation(message, messageTextAlpha, animationDuration)
+
+                        // Fade out the entire canvas to make the circle completely disappear
+                        launch {
+                            canvasAlpha.animateTo(
+                                0f,
+                                animationSpec = tween(
+                                    durationMillis = shrinkDuration,
+                                    easing = FastOutSlowInEasing
+                                )
+                            )
+                        }
+
+                        // Wait for animations to complete
+                        delay(shrinkDuration.toLong())
+
+                        // Reset index and call onFinish
+                        currentIndex = validatedInitIndex
+                        onFinish()
+                    }
+
+                }
+            }
+
+            val currentAdvance by rememberUpdatedState(::advance)
+            val currentHasPrevious by rememberUpdatedState(canGoBack())
+            val msgScope = remember {
+                object : ShowcaseMsgScope {
+                    override fun next() = currentAdvance(StepAction.NEXT)
+                    override fun previous() = currentAdvance(StepAction.PREVIOUS)
+                    override fun skip() = currentAdvance(StepAction.SKIP)
+                    override val hasPrevious: Boolean get() = currentHasPrevious
+                }
+            }
+
+            /** locked: the current step declared canProceed = false (never a greeting). While locked the
+             * overlay ignores taps and touches inside the target fall through to the target itself;
+             * the step ends on its own once the condition is met. [ShowcaseMsgScope] calls still work. */
+            val isStepLocked = !isSingleGreeting && currentIndex != 0 && stepConditions[currentIndex] == false
+            val currentIsStepLocked by rememberUpdatedState(isStepLocked)
+            LaunchedEffect(currentIndex, showCasingItem, isSingleGreeting) {
+                if (isSingleGreeting || currentIndex == 0) return@LaunchedEffect
+                val gate = snapshotFlow { stepConditions[currentIndex] ?: true }
+                /** only a step that starts locked advances by itself; one that may already proceed
+                 * behaves like any other step */
+                if (!gate.first()) {
+                    scope.showcaseEventListener?.onEvent(
+                        Level.INFO,
+                        TAG + "step $currentIndex locked until its condition is met"
+                    )
+                    gate.first { it }
+                    scope.showcaseEventListener?.onEvent(
+                        Level.INFO,
+                        TAG + "step $currentIndex condition met, advancing"
+                    )
+                    currentAdvance(StepAction.NEXT)
+                }
+            }
+
+            /** A tap on the overlay: the canvas, or custom message content that didn't handle it. */
+            fun onOverlayTap(position: Offset) {
+                scope.showcaseEventListener?.onEvent(
+                    Level.VERBOSE,
+                    TAG + "tapped here $position"
+                )
+                if (currentIsStepLocked) {
+                    scope.showcaseEventListener?.onEvent(
+                        Level.VERBOSE,
+                        TAG + "step $currentIndex locked, tap ignored at $position"
+                    )
+                    return
+                }
+                /** when enabled, only taps inside the target shape advance the showcase
+                 * (the greeting/initial screen always advances on any tap) */
+                if (advanceOnTargetTapOnly && currentIndex != 0 && !isSingleGreeting &&
+                    !isTapInsideTarget(
+                        position,
+                        currentTargetTopLeft,
+                        currentTargetSize,
+                        targetShape,
+                        TARGET_TAP_TOLERANCE_PX
+                    )
+                ) {
+                    scope.showcaseEventListener?.onEvent(
+                        Level.VERBOSE,
+                        TAG + "tap outside target ignored at $position"
+                    )
+                    return
+                }
+                advance(StepAction.NEXT)
+            }
+
+            /** top-left of the custom message content, used to map its taps to overlay coordinates */
+            val customMsgTopLeft = remember { mutableStateOf(Offset.Zero) }
+
             Canvas(
                 modifier = Modifier.fillMaxSize()
                     .semantics { testTag = "circleModeCanvas" }
-                    .pointerInput(Unit) {
-                        detectTapGestures {
-                            scope.showcaseEventListener?.onEvent(
-                                Level.VERBOSE,
-                                TAG + "tapped here $it"
-                            )
-                            /** when enabled, only taps inside the target shape advance the showcase
-                             * (the greeting/initial screen always advances on any tap) */
-                            if (advanceOnTargetTapOnly && currentIndex != 0 && !isSingleGreeting &&
-                                !isTapInsideTarget(
-                                    it,
-                                    currentTargetTopLeft,
-                                    currentTargetSize,
-                                    targetShape,
-                                    TARGET_TAP_TOLERANCE_PX
-                                )
-                            ) {
-                                scope.showcaseEventListener?.onEvent(
-                                    Level.VERBOSE,
-                                    TAG + "tap outside target ignored at $it"
-                                )
-                                return@detectTapGestures
-                            }
-                            if (showCasingItem) {
-                                val shrinkDuration = animationDuration
-
-                                // Shrink both width and height simultaneously and shrink the outer circle
-                                coroutineScope.launch {
-                                    handleMessageExitAnimation(message, messageTextAlpha, animationDuration)
-                                    // Shrink the outer circle
-                                    launch {
-                                        outerAnimatable.animateTo(
-                                            0f,
-                                            animationSpec = tween(
-                                                durationMillis = shrinkDuration,
-                                                easing = FastOutSlowInEasing
-                                            )
-                                        )
-                                    }
-
-                                    // Fade out the entire canvas to make the circle completely disappear
-                                    launch {
-                                        canvasAlpha.animateTo(
-                                            0f,
-                                            animationSpec = tween(
-                                                durationMillis = shrinkDuration,
-                                                easing = FastOutSlowInEasing
-                                            )
-                                        )
-                                    }
-
-                                    // Wait for animations to complete
-                                    delay((animationDuration / 3).toLong())
-
-                                    // Finish showcasing the single item
-                                    scope.showcaseItemFinished()
-                                    currentIndex = validatedInitIndex
-                                }
-                                return@detectTapGestures
-                            } else if (isSingleGreeting) {
-                                coroutineScope.launch {
-                                    handleMessageExitAnimation(singleGreetingMsg, messageTextAlpha, animationDuration)
-
-                                    // Fade out the entire canvas to make the circle completely disappear
-                                    launch {
-                                        canvasAlpha.animateTo(
-                                            0f,
-                                            animationSpec = tween(
-                                                durationMillis = animationDuration / 3,
-                                                easing = FastOutSlowInEasing
-                                            )
-                                        )
-                                    }
-
-                                    // Wait for animations to complete
-                                    delay((animationDuration / 3).toLong())
-
-                                    // Finish showcasing the greeting
-                                    scope.showGreetingFinished()
-
-                                    currentIndex = validatedInitIndex
-                                }
-                                return@detectTapGestures
-                            } else if (currentIndex + 1 < scope.getHashMapSize()) {
-                                if (!animateToNextTarget) {
-                                    // Shrink at current location, then move to new location, then expand
-                                    // Step 1: Shrink at current location
-                                    val shrinkDuration = animationDuration
-
-                                    // Shrink both width and height simultaneously and shrink the outer circle
-                                    coroutineScope.launch {
-                                        handleMessageExitAnimation(message, messageTextAlpha, animationDuration)
-
-                                        // Shrink the outer circle
-                                        launch {
-                                            outerAnimatable.animateTo(
-                                                0f,
-                                                animationSpec = tween(
-                                                    durationMillis = shrinkDuration,
-                                                    easing = FastOutSlowInEasing
-                                                )
-                                            )
-                                        }
-
-                                        // Fade out the entire canvas to make the circle completely disappear
-                                        launch {
-                                            canvasAlpha.animateTo(
-                                                0f,
-                                                animationSpec = tween(
-                                                    durationMillis = shrinkDuration,
-                                                    easing = FastOutSlowInEasing
-                                                )
-                                            )
-                                        }
-
-                                        // Wait for animations to complete
-                                        delay(shrinkDuration.toLong())
-
-                                        // Move to the next target
-                                        currentIndex++
-
-                                    }
-
-                                } else {
-                                    // When animateToNextTarget is true, we don't want to fade out the outer circle
-                                    // we just handle message animation if any then move to the next target
-                                    coroutineScope.launch {
-                                        handleMessageExitAnimation(message, messageTextAlpha, animationDuration)
-
-                                        // Move to the next target
-                                        currentIndex++
-                                    }
-                                }
-
-                            } else {
-                                // This is the last target, finish the showcase
-
-                                coroutineScope.launch {
-                                    val shrinkDuration = animationDuration / 2
-                                    handleMessageExitAnimation(singleGreetingMsg, messageTextAlpha, animationDuration)
-
-                                    // Fade out the entire canvas to make the circle completely disappear
-                                    launch {
-                                        canvasAlpha.animateTo(
-                                            0f,
-                                            animationSpec = tween(
-                                                durationMillis = shrinkDuration,
-                                                easing = FastOutSlowInEasing
-                                            )
-                                        )
-                                    }
-
-                                    // Wait for animations to complete
-                                    delay(shrinkDuration.toLong())
-
-                                    // Reset index and call onFinish
-                                    currentIndex = validatedInitIndex
-                                    onFinish()
-                                }
-
-                            }
+                    /** a locked step must leave the target touchable: no pointer-input node here */
+                    .then(
+                        if (isStepLocked) Modifier else Modifier.pointerInput(Unit) {
+                            detectTapGestures { onOverlayTap(it) }
                         }
-                    }
+                    )
             ) {
                 // The per-step msgBackground keeps its historical fixed 0.9 alpha; a layout-wide
                 // overlayColor honors its own alpha so developers can control transparency.
@@ -503,6 +624,8 @@ fun TargetShowcaseLayout(
 
                     // Display the greeting message in the middle of the screen
                     message?.let { msg ->
+                        // custom content is composed as a sibling of this canvas, nothing to draw here
+                        if (msg.content != null) return@let
                         // Measure text with appropriate constraints to ensure it wraps if needed
                         val maxTextWidth = max(1, (size.width * 0.8f).toInt()) // Use 80% of screen width
                         val textResult = textMeasurer.measure(
@@ -573,7 +696,7 @@ fun TargetShowcaseLayout(
 
                 // Initial calculation of outer circle dimensions (will be adjusted based on text)
                 // Set the outer circle radius to half of the canvas width
-                val outerRadius = max(size.width, size.height) / 2
+                val outerRadius = coveringRadius(itemCenter, size)
                 val outerLeft = itemCenter.x - outerRadius
                 val outerTop = itemCenter.y - outerRadius
                 val outerRight = itemCenter.x + outerRadius
@@ -586,7 +709,7 @@ fun TargetShowcaseLayout(
                 var textResult: TextLayoutResult? = null
 
                 // Calculate text dimensions and position first, then adjust outer circle if needed
-                message?.let { msg ->
+                message?.takeIf { it.content == null }?.let { msg ->
                     // First, calculate an initial estimate of available width for text
                     // This is a conservative estimate that will be refined
                     val initialMaxWidth =
@@ -683,74 +806,7 @@ fun TargetShowcaseLayout(
                                         right = itemCenter.x + rectHalfWidth,
                                         bottom = itemCenter.y + rectHalfHeight
                                     )
-                                    RoundRect(
-                                        left = itemCenter.x - rectHalfWidth,
-                                        top = itemCenter.y - rectHalfHeight,
-                                        right = itemCenter.x + rectHalfWidth,
-                                        bottom = itemCenter.y + rectHalfHeight,
-                                    )
-
-                                    val cornerRadiusPx = with(localDensity) {
-                                        cornerRadius.toPx()
-                                    }
-
-                                    // Top-left arc
-                                    moveTo(rect.left, rect.top + cornerRadiusPx)
-                                    arcTo(
-                                        rect = Rect(
-                                            left = rect.left,
-                                            top = rect.top,
-                                            right = rect.left + cornerRadiusPx * 2,
-                                            bottom = rect.top + cornerRadiusPx * 2
-                                        ),
-                                        startAngleDegrees = 180f,
-                                        sweepAngleDegrees = 90f,
-                                        forceMoveTo = false
-                                    )
-
-                                    // Top-right arc
-                                    lineTo(rect.right - cornerRadiusPx, rect.top)
-                                    arcTo(
-                                        rect = Rect(
-                                            left = rect.right - cornerRadiusPx * 2,
-                                            top = rect.top,
-                                            right = rect.right,
-                                            bottom = rect.top + cornerRadiusPx * 2
-                                        ),
-                                        startAngleDegrees = 270f,
-                                        sweepAngleDegrees = 90f,
-                                        forceMoveTo = false
-                                    )
-
-                                    // Bottom-right arc
-                                    lineTo(rect.right, rect.bottom - cornerRadiusPx)
-                                    arcTo(
-                                        rect = Rect(
-                                            left = rect.right - cornerRadiusPx * 2,
-                                            top = rect.bottom - cornerRadiusPx * 2,
-                                            right = rect.right,
-                                            bottom = rect.bottom
-                                        ),
-                                        startAngleDegrees = 0f,
-                                        sweepAngleDegrees = 90f,
-                                        forceMoveTo = false
-                                    )
-
-                                    // Bottom-left arc
-                                    lineTo(rect.left + cornerRadiusPx, rect.bottom)
-                                    arcTo(
-                                        rect = Rect(
-                                            left = rect.left,
-                                            top = rect.bottom - cornerRadiusPx * 2,
-                                            right = rect.left + cornerRadiusPx * 2,
-                                            bottom = rect.bottom
-                                        ),
-                                        startAngleDegrees = 90f,
-                                        sweepAngleDegrees = 90f,
-                                        forceMoveTo = false
-                                    )
-
-                                    close()
+                                    addRoundedTarget(rect, with(localDensity) { cornerRadius.toPx() })
                                 }
 
                                 else -> {
@@ -813,65 +869,7 @@ fun TargetShowcaseLayout(
                                         right = itemCenter.x + (rectHalfWidth + pulseRadius.value),
                                         bottom = itemCenter.y + (rectHalfHeight + pulseRadius.value)
                                     )
-                                    val cornerRadiusPx = cornerRadius.toPx()
-
-                                    // Top-left arc
-                                    moveTo(rect.left, rect.top + cornerRadiusPx)
-                                    arcTo(
-                                        rect = Rect(
-                                            left = rect.left,
-                                            top = rect.top,
-                                            right = rect.left + cornerRadiusPx * 2,
-                                            bottom = rect.top + cornerRadiusPx * 2
-                                        ),
-                                        startAngleDegrees = 180f,
-                                        sweepAngleDegrees = 90f,
-                                        forceMoveTo = false
-                                    )
-
-                                    // Top-right arc
-                                    lineTo(rect.right - cornerRadiusPx, rect.top)
-                                    arcTo(
-                                        rect = Rect(
-                                            left = rect.right - cornerRadiusPx * 2,
-                                            top = rect.top,
-                                            right = rect.right,
-                                            bottom = rect.top + cornerRadiusPx * 2
-                                        ),
-                                        startAngleDegrees = 270f,
-                                        sweepAngleDegrees = 90f,
-                                        forceMoveTo = false
-                                    )
-
-                                    // Bottom-right arc
-                                    lineTo(rect.right, rect.bottom - cornerRadiusPx)
-                                    arcTo(
-                                        rect = Rect(
-                                            left = rect.right - cornerRadiusPx * 2,
-                                            top = rect.bottom - cornerRadiusPx * 2,
-                                            right = rect.right,
-                                            bottom = rect.bottom
-                                        ),
-                                        startAngleDegrees = 0f,
-                                        sweepAngleDegrees = 90f,
-                                        forceMoveTo = false
-                                    )
-
-                                    // Bottom-left arc
-                                    lineTo(rect.left + cornerRadiusPx, rect.bottom)
-                                    arcTo(
-                                        rect = Rect(
-                                            left = rect.left,
-                                            top = rect.bottom - cornerRadiusPx * 2,
-                                            right = rect.left + cornerRadiusPx * 2,
-                                            bottom = rect.bottom
-                                        ),
-                                        startAngleDegrees = 90f,
-                                        sweepAngleDegrees = 90f,
-                                        forceMoveTo = false
-                                    )
-
-                                    close()
+                                    addRoundedTarget(rect, cornerRadius.toPx())
                                 }
 
                                 else -> {
@@ -911,65 +909,7 @@ fun TargetShowcaseLayout(
                                         right = itemCenter.x + rectHalfWidth,
                                         bottom = itemCenter.y + rectHalfHeight
                                     )
-                                    val cornerRadiusPx = cornerRadius.toPx()
-
-                                    // Top-left arc
-                                    moveTo(rect.left, rect.top + cornerRadiusPx)
-                                    arcTo(
-                                        rect = Rect(
-                                            left = rect.left,
-                                            top = rect.top,
-                                            right = rect.left + cornerRadiusPx * 2,
-                                            bottom = rect.top + cornerRadiusPx * 2
-                                        ),
-                                        startAngleDegrees = 180f,
-                                        sweepAngleDegrees = 90f,
-                                        forceMoveTo = false
-                                    )
-
-                                    // Top-right arc
-                                    lineTo(rect.right - cornerRadiusPx, rect.top)
-                                    arcTo(
-                                        rect = Rect(
-                                            left = rect.right - cornerRadiusPx * 2,
-                                            top = rect.top,
-                                            right = rect.right,
-                                            bottom = rect.top + cornerRadiusPx * 2
-                                        ),
-                                        startAngleDegrees = 270f,
-                                        sweepAngleDegrees = 90f,
-                                        forceMoveTo = false
-                                    )
-
-                                    // Bottom-right arc
-                                    lineTo(rect.right, rect.bottom - cornerRadiusPx)
-                                    arcTo(
-                                        rect = Rect(
-                                            left = rect.right - cornerRadiusPx * 2,
-                                            top = rect.bottom - cornerRadiusPx * 2,
-                                            right = rect.right,
-                                            bottom = rect.bottom
-                                        ),
-                                        startAngleDegrees = 0f,
-                                        sweepAngleDegrees = 90f,
-                                        forceMoveTo = false
-                                    )
-
-                                    // Bottom-left arc
-                                    lineTo(rect.left + cornerRadiusPx, rect.bottom)
-                                    arcTo(
-                                        rect = Rect(
-                                            left = rect.left,
-                                            top = rect.bottom - cornerRadiusPx * 2,
-                                            right = rect.left + cornerRadiusPx * 2,
-                                            bottom = rect.bottom
-                                        ),
-                                        startAngleDegrees = 90f,
-                                        sweepAngleDegrees = 90f,
-                                        forceMoveTo = false
-                                    )
-
-                                    close()
+                                    addRoundedTarget(rect, cornerRadius.toPx())
                                 }
 
                                 else -> {
@@ -998,152 +938,118 @@ fun TargetShowcaseLayout(
 
                 // Draw the message text between the inner and outer circle bounds
                 message?.let { msg ->
-                    // Constants for padding and spacing - use the same values as in the outer circle adjustment
-                    // to ensure consistency
-                    val safetyPadding = 100f
-                    val textPadding = 24f
-
-                    // Calculate the maximum width available for text
-                    // Use a narrower width to ensure text wraps appropriately and stays within bounds
-                    // Use a more conservative width to ensure text doesn't extend beyond outer circle
-                    val calculatedWidth =
-                        min(size.width.toInt() - 200, (outerRight - outerLeft - 4 * safetyPadding).toInt())
-                    // Ensure maxTextWidth is always positive to avoid Constraints exception
-                    val maxTextWidth = max(1, calculatedWidth)
+                    // custom content is composed as a sibling of this canvas, nothing to draw here
+                    if (msg.content != null) return@let
 
                     // Measure text with appropriate constraints to ensure it wraps if needed
                     val textResult = textMeasurer.measure(
                         msg.text,
                         style = msg.textStyle,
                         overflow = TextOverflow.Visible,
-                        constraints = Constraints(0, maxTextWidth)
+                        constraints = Constraints(0, targetLayoutMessageMaxWidth(size))
                     )
 
-                    // Check if displaying the text above the target would make it go outside the screen bounds
-                    // Use increased safety padding to ensure more space between text and outer circle
                     // Use rectHalfHeight for rectangle mode to position text correctly relative to the rectangle
                     val verticalOffset = if (targetShape == TargetShape.CIRCLE) circleRadius else rectHalfHeight
-                    val textAboveY = itemCenter.y - verticalOffset - textResult.size.height - safetyPadding * 1.5f
-                    val textBelowY = itemCenter.y + verticalOffset + safetyPadding * 1.5f
-                    val isTextAbove = textAboveY >= safetyPadding
-
-                    // If text would be outside the screen bounds when displayed above, show it below
-                    val textY = if (!isTextAbove) {
-                        scope.showcaseEventListener?.onEvent(
-                            Level.INFO,
-                            TAG + "Text would be outside screen bounds if displayed above. Displaying below target instead."
-                        )
-                        // Make sure text stays within the adjusted outer circle when displayed below
-                        min(textBelowY, outerBottom - textResult.size.height - safetyPadding * 1.5f)
-                    } else {
-                        // Make sure text stays within the adjusted outer circle when displayed above
-                        max(textAboveY, outerTop + safetyPadding * 1.5f)
-                    }
-
-                    // Log if text is very close to the outer circle bounds
-                    if (isTextAbove && textY < outerTop + safetyPadding * 2) {
-                        scope.showcaseEventListener?.onEvent(
-                            Level.INFO,
-                            TAG + "Text is very close to the top edge of the outer circle."
-                        )
-                    } else if (!isTextAbove && textY + textResult.size.height > outerBottom - safetyPadding * 2) {
-                        scope.showcaseEventListener?.onEvent(
-                            Level.INFO,
-                            TAG + "Text is very close to the bottom edge of the outer circle."
-                        )
-                    }
-
-                    // Ensure text doesn't extend beyond the left or right edges of the screen and outer circle
-                    var textX = itemCenter.x - textResult.size.width / 2
-
-                    // Use increased safety padding for all edge checks
-                    val horizontalSafetyPadding = safetyPadding * 1.5f
-
-                    // Adjust if text would go beyond left edge of screen
-                    if (textX < horizontalSafetyPadding) {
-                        scope.showcaseEventListener?.onEvent(
-                            Level.INFO,
-                            TAG + "Text would extend beyond left edge of screen. Adjusting position."
-                        )
-                        textX = horizontalSafetyPadding
-                    }
-
-                    // Adjust if text would go beyond right edge of screen
-                    if (textX + textResult.size.width > size.width - horizontalSafetyPadding) {
-                        scope.showcaseEventListener?.onEvent(
-                            Level.INFO,
-                            TAG + "Text would extend beyond right edge of screen. Adjusting position."
-                        )
-                        textX = size.width - textResult.size.width - horizontalSafetyPadding
-                    }
-
-                    // Also ensure text stays within the horizontal bounds of the outer circle
-                    // with increased safety padding
-                    if (textX < outerLeft + horizontalSafetyPadding) {
-                        scope.showcaseEventListener?.onEvent(
-                            Level.INFO,
-                            TAG + "Text would extend beyond left edge of outer circle. Adjusting position."
-                        )
-                        textX = outerLeft + horizontalSafetyPadding
-                    }
-
-                    if (textX + textResult.size.width > outerRight - horizontalSafetyPadding) {
-                        scope.showcaseEventListener?.onEvent(
-                            Level.INFO,
-                            TAG + "Text would extend beyond right edge of outer circle. Adjusting position."
-                        )
-                        textX = outerRight - textResult.size.width - horizontalSafetyPadding
-                    }
-
-                    // If after all adjustments, text still doesn't fit within screen bounds,
-                    // prioritize keeping it on screen over keeping it within outer circle
-                    if (textX < horizontalSafetyPadding) {
-                        textX = horizontalSafetyPadding
-                        scope.showcaseEventListener?.onEvent(
-                            Level.INFO,
-                            TAG + "Text still extends beyond left edge of screen. Forcing on-screen position."
-                        )
-                    }
-
-                    if (textX + textResult.size.width > size.width - horizontalSafetyPadding) {
-                        textX = size.width - textResult.size.width - horizontalSafetyPadding
-                        scope.showcaseEventListener?.onEvent(
-                            Level.INFO,
-                            TAG + "Text still extends beyond right edge of screen. Forcing on-screen position."
-                        )
-                    }
-
-                    // Draw a background for the text with increased padding
-                    // Use a larger padding for the background to ensure text has room to breathe
-                    val bgPadding = textPadding * 1.5f
-                    val bgRect = Rect(
-                        left = textX - bgPadding,
-                        top = textY - bgPadding,
-                        right = textX + textResult.size.width + bgPadding,
-                        bottom = textY + textResult.size.height + bgPadding
+                    val placement = computeTargetLayoutMessagePlacement(
+                        messageSize = textResult.size,
+                        gravity = msg.gravity,
+                        itemCenter = itemCenter,
+                        verticalOffset = verticalOffset,
+                        outer = Rect(outerLeft, outerTop, outerRight, outerBottom),
+                        canvasSize = size,
+                        log = { scope.showcaseEventListener?.onEvent(Level.INFO, TAG + it) }
                     )
-
-                    // Add an additional safety margin for the check
-                    val extraSafetyMargin = safetyPadding * 0.75f
-
-                    // Log if text is very close to the outer circle bounds
-                    if (bgRect.left < outerLeft + safetyPadding + extraSafetyMargin ||
-                        bgRect.right > outerRight - safetyPadding - extraSafetyMargin ||
-                        bgRect.top < outerTop + safetyPadding + extraSafetyMargin ||
-                        bgRect.bottom > outerBottom - safetyPadding - extraSafetyMargin
-                    ) {
-                        scope.showcaseEventListener?.onEvent(
-                            Level.INFO,
-                            TAG + "Text is very close to the edge of the outer circle."
-                        )
-                    }
 
                     // Draw the text with the animated alpha
                     drawText(
                         textResult,
-                        topLeft = Offset(textX, textY),
+                        topLeft = placement.offset,
                         alpha = messageTextAlpha.value * canvasAlpha.value
                     )
+                }
+            }
+            /** while the step is locked, swallow touches everywhere except over the target so the
+             * target itself receives them (see [TouchBlockerWithHole]) */
+            if (isStepLocked) {
+                TouchBlockerWithHole(
+                    hole = { Rect(Offset(animatedX.value, animatedY.value), itemSize) },
+                    onTap = { onOverlayTap(it) }
+                )
+            }
+            /** Custom message content is composed on top of the canvas. It is only in the tree
+             * while visible so an invisible button can't swallow taps between steps; while it is
+             * composed, taps on non-clickable parts fall through to the canvas above. */
+            val customContent = message?.content
+            val customMsgVisible by remember { derivedStateOf { messageTextAlpha.value > 0f } }
+            if (customContent != null && customMsgVisible) {
+                val isGreetingStep = currentIndex == 0 || isSingleGreeting
+                Box(
+                    modifier = Modifier
+                        .layout { measurable, layoutConstraints ->
+                            val canvasSize = Size(
+                                layoutConstraints.maxWidth.toFloat(),
+                                layoutConstraints.maxHeight.toFloat()
+                            )
+                            // Same width limits the text path uses
+                            val maxContentWidth = if (isGreetingStep) {
+                                max(1, (canvasSize.width * 0.8f).toInt())
+                            } else {
+                                targetLayoutMessageMaxWidth(canvasSize)
+                            }
+                            val placeable = measurable.measure(
+                                Constraints(maxWidth = maxContentWidth, maxHeight = layoutConstraints.maxHeight)
+                            )
+                            // Fill the whole overlay so the placed child stays inside our bounds
+                            // (otherwise its buttons would not be hit-testable).
+                            layout(layoutConstraints.maxWidth, layoutConstraints.maxHeight) {
+                                val position = if (isGreetingStep) {
+                                    // Greeting: centered on the screen
+                                    Offset(
+                                        (canvasSize.width - placeable.width) / 2,
+                                        (canvasSize.height - placeable.height) / 2
+                                    )
+                                } else {
+                                    // Same geometry the canvas uses for its donut and text
+                                    val circleRadius = max(itemSize.width, itemSize.height) / 2
+                                    val itemCenter = Offset(
+                                        animatedX.value + itemSize.width / 2,
+                                        animatedY.value + itemSize.height / 2
+                                    )
+                                    val outerRadius = coveringRadius(itemCenter, canvasSize)
+                                    computeTargetLayoutMessagePlacement(
+                                        messageSize = IntSize(placeable.width, placeable.height),
+                                        gravity = message?.gravity ?: Gravity.Auto,
+                                        itemCenter = itemCenter,
+                                        verticalOffset = if (targetShape == TargetShape.CIRCLE) circleRadius else itemSize.height / 2,
+                                        outer = Rect(center = itemCenter, radius = outerRadius),
+                                        canvasSize = canvasSize,
+                                        log = { scope.showcaseEventListener?.onEvent(Level.INFO, TAG + it) }
+                                    ).offset
+                                }
+                                if (customMsgTopLeft.value != position) customMsgTopLeft.value = position
+                                placeable.place(position.round())
+                            }
+                        }
+                        .graphicsLayer { alpha = messageTextAlpha.value * canvasAlpha.value }
+                ) {
+                    Box(
+                        modifier = Modifier.pointerInput(Unit) {
+                            /** A tap that no clickable inside the content consumed behaves like a tap on
+                             * the overlay. Observed in the Final pass so buttons inside keep their clicks,
+                             * and so content such as a Card (whose Surface blocks touches behind it) still
+                             * lets the user tap through to advance. */
+                            awaitEachGesture {
+                                awaitFirstDown(requireUnconsumed = false, pass = PointerEventPass.Final)
+                                val up = waitForUpOrCancellation(pass = PointerEventPass.Final)
+                                if (up != null && !up.isConsumed) {
+                                    onOverlayTap(up.position + customMsgTopLeft.value)
+                                }
+                            }
+                        }
+                    ) {
+                        msgScope.customContent()
+                    }
                 }
             }
         }
