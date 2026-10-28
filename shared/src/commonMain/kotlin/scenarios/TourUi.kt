@@ -1,34 +1,18 @@
 package scenarios
 
 import androidx.compose.foundation.background
-import androidx.compose.foundation.layout.Arrangement
-import androidx.compose.foundation.layout.Box
-import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.Spacer
-import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.height
-import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.Check
+import androidx.compose.material.icons.outlined.PlayCircleOutline
 import androidx.compose.material.icons.outlined.Replay
 import androidx.compose.material.icons.outlined.TouchApp
-import androidx.compose.material3.Button
-import androidx.compose.material3.ButtonDefaults
-import androidx.compose.material3.Card
-import androidx.compose.material3.CardDefaults
-import androidx.compose.material3.DropdownMenu
-import androidx.compose.material3.DropdownMenuItem
-import androidx.compose.material3.HorizontalDivider
-import androidx.compose.material3.Icon
-import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.Text
-import androidx.compose.material3.TextButton
+import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.SideEffect
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Brush
@@ -37,6 +21,7 @@ import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
+import kotlinx.coroutines.delay
 import ly.com.tahaben.showcase_layout_compose.model.ShowcaseMsgScope
 
 /**
@@ -54,6 +39,38 @@ data class TourPalette(
 )
 
 /**
+ * Lets a screen drive its own tour: the cards publish the step they are showing and the
+ * [ShowcaseMsgScope] they received, so [TourAutoplay] can call `next()` from outside the overlay.
+ * Used for hands-free demos and for recording the README media.
+ */
+class TourController {
+    /** 0 while the greeting is up, then the step number of the card on screen */
+    var step: Int = 0
+    var scope: ShowcaseMsgScope? = null
+}
+
+/**
+ * Advances the tour on its own every [stepDelayMs] while [active]. [performStep] gets the current
+ * step first and returns true when it handled it (a locked step whose action it performed, after
+ * which the library moves on by itself); otherwise the card's Next is pressed.
+ */
+@Composable
+fun TourAutoplay(
+    active: Boolean,
+    controller: TourController,
+    performStep: (step: Int) -> Boolean,
+    stepDelayMs: Long = 3200,
+) {
+    LaunchedEffect(active) {
+        if (!active) return@LaunchedEffect
+        while (true) {
+            delay(stepDelayMs)
+            if (!performStep(controller.step)) controller.scope?.next()
+        }
+    }
+}
+
+/**
  * The greeting card shown before the first step: an icon, a title, a line of copy and the two
  * buttons every onboarding has. Buttons drive the showcase through [scope].
  */
@@ -67,7 +84,9 @@ fun WelcomeCard(
     body: String,
     startLabel: String = "Start the tour",
     laterLabel: String = "Maybe later",
+    controller: TourController? = null,
 ) {
+    controller?.let { SideEffect { it.step = 0; it.scope = scope } }
     Card(
         modifier = Modifier.width(300.dp),
         shape = RoundedCornerShape(24.dp),
@@ -123,7 +142,9 @@ fun TourCard(
     palette: TourPalette,
     locked: Boolean = false,
     lockedHint: String = "",
+    controller: TourController? = null,
 ) {
+    controller?.let { SideEffect { it.step = step; it.scope = scope } }
     Card(
         modifier = Modifier.width(300.dp),
         shape = RoundedCornerShape(20.dp),
@@ -205,6 +226,7 @@ fun TourOptionsMenu(
     useTargetLayout: Boolean,
     onReplay: () -> Unit,
     onLayoutChange: (Boolean) -> Unit,
+    onAutoPlay: (() -> Unit)? = null,
 ) {
     DropdownMenu(expanded = expanded, onDismissRequest = onDismiss) {
         DropdownMenuItem(
@@ -212,6 +234,13 @@ fun TourOptionsMenu(
             leadingIcon = { Icon(Icons.Outlined.Replay, contentDescription = null) },
             onClick = { onDismiss(); onReplay() }
         )
+        if (onAutoPlay != null) {
+            DropdownMenuItem(
+                text = { Text("Auto-play tour") },
+                leadingIcon = { Icon(Icons.Outlined.PlayCircleOutline, contentDescription = null) },
+                onClick = { onDismiss(); onAutoPlay() }
+            )
+        }
         HorizontalDivider()
         LayoutMenuItem("TargetShowcaseLayout", "Spotlight, morphs between targets", useTargetLayout) {
             onDismiss(); onLayoutChange(true)

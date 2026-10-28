@@ -18,21 +18,38 @@ Create beautiful animated showcase effects for your compose UIs easily!
 - **ShowcaseLayout**: Classic full-screen overlay with cutouts
 - **TargetShowcaseLayout**: Modern targeted highlighting with customizable shapes
 
-## Web demo
-[Click here](https://tahaak67.github.io/ShowcaseLayoutCompose/index.html) to try showcase layout for web in your browser!
-
 ## Demo
 
-|                               ShowcaseLayout                                |
-|:---------------------------------------------------------------------------:|
-| <img src="metadata/gif/slc-light.gif" alt="Library demo GIF" width="300" /> | 
+<p align="center">
+  <img src="metadata/gif/bank_tour.gif" alt="Lumen Bank onboarding tour" width="300" />
+</p>
 
-https://github.com/user-attachments/assets/faa5dc19-606a-4731-80b1-44cbf6d08fdc
+<details>
+<summary><b>More tours: Now Playing and Messages</b></summary>
+<br>
+<p align="center">
+  <img src="metadata/gif/music_tour.gif" alt="Now Playing onboarding tour" width="300" />&nbsp;&nbsp;&nbsp;&nbsp;
+  <img src="metadata/gif/messages_tour.gif" alt="Messages onboarding tour" width="300" />
+</p>
+</details>
 
+The demo app ships three small apps, each with an onboarding tour built on the library, plus a playground
+that exposes every parameter. [Try it in your browser](https://tahaak67.github.io/ShowcaseLayoutCompose/index.html)
+or jump straight into a tour:
 
+| Scenario | What it shows | Source |
+|:--|:--|:--|
+| **Lumen Bank** · [open](https://tahaak67.github.io/ShowcaseLayoutCompose/index.html?scenario=banking) | `TargetShowcaseLayout` morphing between a card and a round button, custom message cards, and a locked "tap the eye icon to continue" step | [`BankingScreen.kt`](shared/src/commonMain/kotlin/scenarios/banking/BankingScreen.kt) |
+| **Now Playing** · [open](https://tahaak67.github.io/ShowcaseLayoutCompose/index.html?scenario=music) | A dark UI with a light overlay, `TargetShape.CIRCLE`, the pulse ring, and a locked step on the play button | [`MusicScreen.kt`](shared/src/commonMain/kotlin/scenarios/music/MusicScreen.kt) |
+| **Messages** · [open](https://tahaak67.github.io/ShowcaseLayoutCompose/index.html?scenario=chat) | `ShowcaseLayout` with a locked step on a text field: the keyboard works under the overlay and the tour continues once a message is sent | [`ChatScreen.kt`](shared/src/commonMain/kotlin/scenarios/chat/ChatScreen.kt) |
 
+<p align="center">
+  <img src="metadata/screenshots/scenarios-hero.png" alt="The three demo scenarios: Lumen Bank, Now Playing and Messages" width="760" />
+</p>
 
-<img src="metadata/screenshots/screenshot-13.png" alt="Library demo GIF" width="300" />.<img src="metadata/screenshots/screenshot-14.png" alt="Library demo GIF" width="300" />
+Every scenario can be switched between the two layouts from its menu, and `&autoplay=1` on any of the
+links above plays the tour hands-free. The message cards are ordinary composables, see
+[`TourUi.kt`](shared/src/commonMain/kotlin/scenarios/TourUi.kt).
 
 ## Setup
 
@@ -227,7 +244,11 @@ TargetShowcaseLayout(
 ```
 
 
-<!-- SCREENSHOT PLACEHOLDER: Add a side-by-side comparison of the same UI with both layouts -->
+The same banking screen on `TargetShowcaseLayout` (left) and `ShowcaseLayout` (right):
+
+<p align="center">
+  <img src="metadata/screenshots/banking-target-vs-showcase.png" alt="TargetShowcaseLayout and ShowcaseLayout highlighting the same balance card" width="520" />
+</p>
 
 #### Additional parameters
 

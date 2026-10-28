@@ -3,17 +3,7 @@ package scenarios.banking
 import ShowcaseLayoutWrapper
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
-import androidx.compose.foundation.layout.Arrangement
-import androidx.compose.foundation.layout.Box
-import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.Spacer
-import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.height
-import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.layout.widthIn
+import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -22,44 +12,9 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.automirrored.outlined.Send
 import androidx.compose.material.icons.filled.Home
-import androidx.compose.material.icons.outlined.AccountBalance
-import androidx.compose.material.icons.outlined.Add
-import androidx.compose.material.icons.outlined.BarChart
-import androidx.compose.material.icons.outlined.CallReceived
-import androidx.compose.material.icons.outlined.CreditCard
-import androidx.compose.material.icons.outlined.DirectionsBus
-import androidx.compose.material.icons.outlined.HelpOutline
-import androidx.compose.material.icons.outlined.LocalCafe
-import androidx.compose.material.icons.outlined.Notifications
-import androidx.compose.material.icons.outlined.Person
-import androidx.compose.material.icons.outlined.QrCodeScanner
-import androidx.compose.material.icons.outlined.ShoppingBasket
-import androidx.compose.material.icons.outlined.Visibility
-import androidx.compose.material.icons.outlined.VisibilityOff
-import androidx.compose.material.icons.outlined.Work
-import androidx.compose.material3.Card
-import androidx.compose.material3.CardDefaults
-import androidx.compose.material3.HorizontalDivider
-import androidx.compose.material3.Icon
-import androidx.compose.material3.IconButton
-import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.NavigationBar
-import androidx.compose.material3.NavigationBarItem
-import androidx.compose.material3.Scaffold
-import androidx.compose.material3.SnackbarHost
-import androidx.compose.material3.SnackbarHostState
-import androidx.compose.material3.Surface
-import androidx.compose.material3.Text
-import androidx.compose.material3.TextButton
-import androidx.compose.material3.lightColorScheme
-import androidx.compose.runtime.Composable
-import androidx.compose.runtime.LaunchedEffect
-import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableIntStateOf
-import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.remember
-import androidx.compose.runtime.rememberCoroutineScope
-import androidx.compose.runtime.setValue
+import androidx.compose.material.icons.outlined.*
+import androidx.compose.material3.*
+import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -73,19 +28,10 @@ import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import ly.com.tahaben.showcase_layout_compose.domain.Level
 import ly.com.tahaben.showcase_layout_compose.domain.ShowcaseEventListener
-import ly.com.tahaben.showcase_layout_compose.model.Arrow
-import ly.com.tahaben.showcase_layout_compose.model.Gravity
-import ly.com.tahaben.showcase_layout_compose.model.Head
-import ly.com.tahaben.showcase_layout_compose.model.MsgAnimation
-import ly.com.tahaben.showcase_layout_compose.model.ShowcaseMsg
-import ly.com.tahaben.showcase_layout_compose.model.ShowcaseMsgScope
-import ly.com.tahaben.showcase_layout_compose.model.TargetShape
+import ly.com.tahaben.showcase_layout_compose.model.*
 import ly.com.tahaben.showcase_layout_compose.ui.ShowcaseLayoutDefaults
 import ly.com.tahaben.showcase_layout_compose.ui.TargetShowcaseLayout
-import scenarios.TourCard
-import scenarios.TourOptionsMenu
-import scenarios.TourPalette
-import scenarios.WelcomeCard
+import scenarios.*
 
 // Lumen Bank palette
 private val Navy = Color(0xFF1E2A5A)
@@ -128,10 +74,12 @@ private const val TOUR_STEPS = 4
  * - a brand overlay and pulse color via [ShowcaseLayoutDefaults.colors]
  */
 @Composable
-fun BankingScreen(onBack: () -> Unit) {
+fun BankingScreen(onBack: () -> Unit, autoPlay: Boolean = false, targetLayout: Boolean = true) {
     var isShowcasing by remember { mutableStateOf(false) }
     // The same tour runs on both layouts; switch from the "?" menu to compare them.
-    var useTargetLayout by remember { mutableStateOf(true) }
+    var autoplay by remember { mutableStateOf(autoPlay) }
+    val tour = remember { TourController() }
+    var useTargetLayout by remember { mutableStateOf(targetLayout) }
     var balanceHidden by remember { mutableStateOf(false) }
     var selectedTab by remember { mutableIntStateOf(0) }
     val snackbarHostState = remember { SnackbarHostState() }
@@ -149,9 +97,10 @@ fun BankingScreen(onBack: () -> Unit) {
             isShowcasing = isShowcasing,
             onFinish = {
                 isShowcasing = false
+                autoplay = false
                 scope.launch { snackbarHostState.showSnackbar("You can replay the tour any time from the ? icon.") }
             },
-            greeting = ShowcaseMsg(enterAnim = MsgAnimation.FadeInOut(400)) { WelcomeCard() },
+            greeting = ShowcaseMsg(enterAnim = MsgAnimation.FadeInOut(400)) { WelcomeCard(tour) },
             targetShape = TargetShape.ROUNDED_RECTANGLE,
             cornerRadius = 28.dp,
             animationDuration = 700,
@@ -168,6 +117,11 @@ fun BankingScreen(onBack: () -> Unit) {
                     if (level != Level.VERBOSE) println("Lumen tour: $event")
                 }
             })
+            TourAutoplay(
+                active = autoplay && isShowcasing,
+                controller = tour,
+                performStep = { step -> if (step == 2) { balanceHidden = true; true } else false }
+            )
             Scaffold(
                 containerColor = MaterialTheme.colorScheme.background,
                 snackbarHost = { SnackbarHost(snackbarHostState) },
@@ -207,14 +161,15 @@ fun BankingScreen(onBack: () -> Unit) {
                             onBack = onBack,
                             useTargetLayout = useTargetLayout,
                             onReplay = { balanceHidden = false; isShowcasing = true },
-                            onLayoutChange = { useTargetLayout = it }
+                            onLayoutChange = { useTargetLayout = it },
+                            onAutoPlay = { balanceHidden = false; autoplay = true; isShowcasing = true }
                         )
 
                         // Step 1: the whole balance card
                         BalanceCard(
                             modifier = Modifier.showcase(
                                 index = 1,
-                                message = tourMessage { TourCard(step = 1, scope = this) }
+                                message = tourMessage { TourCard(step = 1, scope = this, controller = tour) }
                             ),
                             hidden = balanceHidden,
                             onToggleHidden = { balanceHidden = !balanceHidden },
@@ -222,7 +177,7 @@ fun BankingScreen(onBack: () -> Unit) {
                             // shows the hint so it does not change while it fades out.
                             eyeModifier = Modifier.showcase(
                                 index = 2,
-                                message = tourMessage { TourCard(step = 2, scope = this, locked = true) },
+                                message = tourMessage { TourCard(step = 2, scope = this, locked = true, controller = tour) },
                                 canProceed = balanceHidden
                             )
                         )
@@ -232,7 +187,7 @@ fun BankingScreen(onBack: () -> Unit) {
                         QuickActions(
                             sendModifier = Modifier.showcase(
                                 index = 3,
-                                message = tourMessage(gravity = Gravity.Bottom) { TourCard(step = 3, scope = this) }
+                                message = tourMessage(gravity = Gravity.Bottom) { TourCard(step = 3, scope = this, controller = tour) }
                             )
                         )
 
@@ -240,7 +195,7 @@ fun BankingScreen(onBack: () -> Unit) {
                         RecentActivity(
                             modifier = Modifier.showcase(
                                 index = 4,
-                                message = tourMessage { TourCard(step = 4, scope = this) }
+                                message = tourMessage { TourCard(step = 4, scope = this, controller = tour) }
                             )
                         )
                         Spacer(Modifier.height(8.dp))
@@ -269,7 +224,8 @@ private fun Header(
     onBack: () -> Unit,
     useTargetLayout: Boolean,
     onReplay: () -> Unit,
-    onLayoutChange: (Boolean) -> Unit
+    onLayoutChange: (Boolean) -> Unit,
+    onAutoPlay: () -> Unit,
 ) {
     var menuOpen by remember { mutableStateOf(false) }
     Row(
@@ -306,7 +262,8 @@ private fun Header(
                 onDismiss = { menuOpen = false },
                 useTargetLayout = useTargetLayout,
                 onReplay = onReplay,
-                onLayoutChange = onLayoutChange
+                onLayoutChange = onLayoutChange,
+                onAutoPlay = onAutoPlay
             )
         }
         IconButton(onClick = {}) {
@@ -482,8 +439,9 @@ private val BankTourPalette = TourPalette(
 )
 
 @Composable
-private fun ShowcaseMsgScope.WelcomeCard() = WelcomeCard(
+private fun ShowcaseMsgScope.WelcomeCard(controller: TourController) = WelcomeCard(
     scope = this,
+    controller = controller,
     palette = BankTourPalette,
     icon = Icons.Outlined.AccountBalance,
     iconBrush = Brush.linearGradient(listOf(Indigo, Violet)),
@@ -513,8 +471,9 @@ private val tourSteps = listOf(
 )
 
 @Composable
-private fun TourCard(step: Int, scope: ShowcaseMsgScope, locked: Boolean = false) = TourCard(
+private fun TourCard(step: Int, scope: ShowcaseMsgScope, locked: Boolean = false, controller: TourController) = TourCard(
     step = step,
+    controller = controller,
     total = TOUR_STEPS,
     title = tourSteps[step - 1].title,
     body = tourSteps[step - 1].body,

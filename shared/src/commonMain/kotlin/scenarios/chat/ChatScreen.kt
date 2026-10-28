@@ -2,18 +2,7 @@ package scenarios.chat
 
 import ShowcaseLayoutWrapper
 import androidx.compose.foundation.background
-import androidx.compose.foundation.layout.Arrangement
-import androidx.compose.foundation.layout.Box
-import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.Spacer
-import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.height
-import androidx.compose.foundation.layout.imePadding
-import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.layout.widthIn
+import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -23,31 +12,9 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.automirrored.filled.Send
-import androidx.compose.material.icons.outlined.AttachFile
-import androidx.compose.material.icons.outlined.Call
-import androidx.compose.material.icons.outlined.ChatBubbleOutline
-import androidx.compose.material.icons.outlined.MoreVert
-import androidx.compose.material.icons.outlined.Videocam
-import androidx.compose.material3.Icon
-import androidx.compose.material3.IconButton
-import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.Scaffold
-import androidx.compose.material3.SnackbarHost
-import androidx.compose.material3.SnackbarHostState
-import androidx.compose.material3.Surface
-import androidx.compose.material3.Text
-import androidx.compose.material3.TextField
-import androidx.compose.material3.TextFieldDefaults
-import androidx.compose.material3.lightColorScheme
-import androidx.compose.runtime.Composable
-import androidx.compose.runtime.LaunchedEffect
-import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableIntStateOf
-import androidx.compose.runtime.mutableStateListOf
-import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.remember
-import androidx.compose.runtime.rememberCoroutineScope
-import androidx.compose.runtime.setValue
+import androidx.compose.material.icons.outlined.*
+import androidx.compose.material3.*
+import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Brush
@@ -62,18 +29,9 @@ import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import ly.com.tahaben.showcase_layout_compose.domain.Level
 import ly.com.tahaben.showcase_layout_compose.domain.ShowcaseEventListener
-import ly.com.tahaben.showcase_layout_compose.model.Arrow
-import ly.com.tahaben.showcase_layout_compose.model.Gravity
-import ly.com.tahaben.showcase_layout_compose.model.Head
-import ly.com.tahaben.showcase_layout_compose.model.MsgAnimation
-import ly.com.tahaben.showcase_layout_compose.model.ShowcaseMsg
-import ly.com.tahaben.showcase_layout_compose.model.ShowcaseMsgScope
-import ly.com.tahaben.showcase_layout_compose.model.TargetShape
+import ly.com.tahaben.showcase_layout_compose.model.*
 import ly.com.tahaben.showcase_layout_compose.ui.ShowcaseLayoutDefaults
-import scenarios.TourCard
-import scenarios.TourOptionsMenu
-import scenarios.TourPalette
-import scenarios.WelcomeCard
+import scenarios.*
 
 // Messages palette
 private val Emerald = Color(0xFF059669)
@@ -117,9 +75,11 @@ private val openingMessages = listOf(
  * moves on by itself once a message is sent, and `onProceed` closes the keyboard again.
  */
 @Composable
-fun ChatScreen(onBack: () -> Unit) {
+fun ChatScreen(onBack: () -> Unit, autoPlay: Boolean = false, targetLayout: Boolean = false) {
     var isShowcasing by remember { mutableStateOf(false) }
-    var useTargetLayout by remember { mutableStateOf(false) }
+    var autoplay by remember { mutableStateOf(autoPlay) }
+    val tour = remember { TourController() }
+    var useTargetLayout by remember { mutableStateOf(targetLayout) }
     val messages = remember { mutableStateListOf<Message>().apply { addAll(openingMessages) } }
     var draft by remember { mutableStateOf("") }
     var sentDuringTour by remember { mutableIntStateOf(0) }
@@ -152,9 +112,10 @@ fun ChatScreen(onBack: () -> Unit) {
             isShowcasing = isShowcasing,
             onFinish = {
                 isShowcasing = false
+                autoplay = false
                 scope.launch { snackbarHostState.showSnackbar("You can replay the tour any time from the ⋮ menu.") }
             },
-            greeting = ShowcaseMsg(enterAnim = MsgAnimation.FadeInOut(400)) { WelcomeCard() },
+            greeting = ShowcaseMsg(enterAnim = MsgAnimation.FadeInOut(400)) { WelcomeCard(tour) },
             targetShape = TargetShape.ROUNDED_RECTANGLE,
             cornerRadius = 20.dp,
             animationDuration = 700,
@@ -171,6 +132,11 @@ fun ChatScreen(onBack: () -> Unit) {
                     if (level != Level.VERBOSE) println("Messages tour: $event")
                 }
             })
+            TourAutoplay(
+                active = autoplay && isShowcasing,
+                controller = tour,
+                performStep = { step -> if (step == 3) { draft = "Hello Maya 👋"; send(); true } else false }
+            )
             Scaffold(
                 containerColor = MaterialTheme.colorScheme.background,
                 snackbarHost = { SnackbarHost(snackbarHostState) }
@@ -186,15 +152,16 @@ fun ChatScreen(onBack: () -> Unit) {
                             useTargetLayout = useTargetLayout,
                             onReplay = { sentDuringTour = 0; isShowcasing = true },
                             onLayoutChange = { useTargetLayout = it },
+                            onAutoPlay = { sentDuringTour = 0; autoplay = true; isShowcasing = true },
                             // Step 1: who you are talking to
                             contactModifier = Modifier.showcase(
                                 index = 1,
-                                message = tourMessage { TourCard(step = 1, scope = this) }
+                                message = tourMessage { TourCard(step = 1, scope = this, controller = tour) }
                             ),
                             // Step 4: the video call button
                             videoModifier = Modifier.showcase(
                                 index = 4,
-                                message = tourMessage { TourCard(step = 4, scope = this) }
+                                message = tourMessage { TourCard(step = 4, scope = this, controller = tour) }
                             )
                         )
                         MessageList(
@@ -203,7 +170,7 @@ fun ChatScreen(onBack: () -> Unit) {
                             // Step 2: a message bubble
                             bubbleModifier = Modifier.showcase(
                                 index = 2,
-                                message = tourMessage(gravity = Gravity.Bottom) { TourCard(step = 2, scope = this) }
+                                message = tourMessage(gravity = Gravity.Bottom) { TourCard(step = 2, scope = this, controller = tour) }
                             )
                         )
                         // Step 3: the composer, locked until a message is sent
@@ -213,7 +180,7 @@ fun ChatScreen(onBack: () -> Unit) {
                             onSend = ::send,
                             modifier = Modifier.showcase(
                                 index = 3,
-                                message = tourMessage(gravity = Gravity.Top) { TourCard(step = 3, scope = this, locked = true) },
+                                message = tourMessage(gravity = Gravity.Top) { TourCard(step = 3, scope = this, locked = true, controller = tour) },
                                 canProceed = sentDuringTour > 0,
                                 // the step is over: drop focus and close the keyboard it opened
                                 onProceed = {
@@ -247,6 +214,7 @@ private fun Header(
     useTargetLayout: Boolean,
     onReplay: () -> Unit,
     onLayoutChange: (Boolean) -> Unit,
+    onAutoPlay: () -> Unit,
     contactModifier: Modifier,
     videoModifier: Modifier,
 ) {
@@ -294,7 +262,8 @@ private fun Header(
                     onDismiss = { menuOpen = false },
                     useTargetLayout = useTargetLayout,
                     onReplay = onReplay,
-                    onLayoutChange = onLayoutChange
+                    onLayoutChange = onLayoutChange,
+                    onAutoPlay = onAutoPlay
                 )
             }
         }
@@ -402,8 +371,9 @@ private val ChatTourPalette = TourPalette(
 )
 
 @Composable
-private fun ShowcaseMsgScope.WelcomeCard() = WelcomeCard(
+private fun ShowcaseMsgScope.WelcomeCard(controller: TourController) = WelcomeCard(
     scope = this,
+    controller = controller,
     palette = ChatTourPalette,
     icon = Icons.Outlined.ChatBubbleOutline,
     iconBrush = Brush.linearGradient(listOf(Emerald, Color(0xFF34D399))),
@@ -433,8 +403,9 @@ private val tourSteps = listOf(
 )
 
 @Composable
-private fun TourCard(step: Int, scope: ShowcaseMsgScope, locked: Boolean = false) = TourCard(
+private fun TourCard(step: Int, scope: ShowcaseMsgScope, locked: Boolean = false, controller: TourController) = TourCard(
     step = step,
+    controller = controller,
     total = TOUR_STEPS,
     title = tourSteps[step - 1].title,
     body = tourSteps[step - 1].body,
