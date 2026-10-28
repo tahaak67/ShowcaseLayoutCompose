@@ -12,3 +12,6 @@ class UrlLauncherWeb() : UrlLauncher {
 }
 
 external fun onLoadFinished()
+
+/** A query parameter of the page URL, or an empty string. */
+external fun demoParam(name: String): String

@@ -6,53 +6,16 @@ import androidx.compose.animation.core.LinearEasing
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
-import androidx.compose.foundation.layout.Arrangement
-import androidx.compose.foundation.layout.Box
-import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.Spacer
-import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.height
-import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.layout.widthIn
+import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.outlined.QueueMusic
-import androidx.compose.material.icons.filled.Favorite
-import androidx.compose.material.icons.filled.Pause
-import androidx.compose.material.icons.filled.PlayArrow
-import androidx.compose.material.icons.filled.SkipNext
-import androidx.compose.material.icons.filled.SkipPrevious
-import androidx.compose.material.icons.outlined.FavoriteBorder
-import androidx.compose.material.icons.outlined.KeyboardArrowDown
-import androidx.compose.material.icons.outlined.MoreVert
-import androidx.compose.material.icons.outlined.MusicNote
-import androidx.compose.material.icons.outlined.Repeat
-import androidx.compose.material.icons.outlined.Shuffle
-import androidx.compose.material.icons.outlined.Speaker
-import androidx.compose.material.icons.outlined.Subtitles
-import androidx.compose.material3.Icon
-import androidx.compose.material3.IconButton
-import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.Scaffold
-import androidx.compose.material3.Slider
-import androidx.compose.material3.SliderDefaults
-import androidx.compose.material3.SnackbarHost
-import androidx.compose.material3.SnackbarHostState
-import androidx.compose.material3.Text
-import androidx.compose.material3.darkColorScheme
-import androidx.compose.runtime.Composable
-import androidx.compose.runtime.LaunchedEffect
-import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableFloatStateOf
-import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.remember
-import androidx.compose.runtime.rememberCoroutineScope
-import androidx.compose.runtime.setValue
+import androidx.compose.material.icons.filled.*
+import androidx.compose.material.icons.outlined.*
+import androidx.compose.material3.*
+import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Brush
@@ -65,18 +28,9 @@ import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import ly.com.tahaben.showcase_layout_compose.domain.Level
 import ly.com.tahaben.showcase_layout_compose.domain.ShowcaseEventListener
-import ly.com.tahaben.showcase_layout_compose.model.Arrow
-import ly.com.tahaben.showcase_layout_compose.model.Gravity
-import ly.com.tahaben.showcase_layout_compose.model.Head
-import ly.com.tahaben.showcase_layout_compose.model.MsgAnimation
-import ly.com.tahaben.showcase_layout_compose.model.ShowcaseMsg
-import ly.com.tahaben.showcase_layout_compose.model.ShowcaseMsgScope
-import ly.com.tahaben.showcase_layout_compose.model.TargetShape
+import ly.com.tahaben.showcase_layout_compose.model.*
 import ly.com.tahaben.showcase_layout_compose.ui.ShowcaseLayoutDefaults
-import scenarios.TourCard
-import scenarios.TourOptionsMenu
-import scenarios.TourPalette
-import scenarios.WelcomeCard
+import scenarios.*
 import kotlin.math.roundToInt
 
 // Now Playing palette
@@ -115,9 +69,11 @@ private const val TRACK_LENGTH_SEC = 228
  * - a locked step on a button that changes state (play / pause) rather than on a text field
  */
 @Composable
-fun MusicScreen(onBack: () -> Unit) {
+fun MusicScreen(onBack: () -> Unit, autoPlay: Boolean = false, targetLayout: Boolean = true) {
     var isShowcasing by remember { mutableStateOf(false) }
-    var useTargetLayout by remember { mutableStateOf(true) }
+    var autoplay by remember { mutableStateOf(autoPlay) }
+    val tour = remember { TourController() }
+    var useTargetLayout by remember { mutableStateOf(targetLayout) }
     var isPlaying by remember { mutableStateOf(false) }
     var isFavorite by remember { mutableStateOf(false) }
     var positionSec by remember { mutableFloatStateOf(84f) }
@@ -143,9 +99,10 @@ fun MusicScreen(onBack: () -> Unit) {
             isShowcasing = isShowcasing,
             onFinish = {
                 isShowcasing = false
+                autoplay = false
                 scope.launch { snackbarHostState.showSnackbar("You can replay the tour any time from the ⋮ menu.") }
             },
-            greeting = ShowcaseMsg(enterAnim = MsgAnimation.FadeInOut(400)) { WelcomeCard() },
+            greeting = ShowcaseMsg(enterAnim = MsgAnimation.FadeInOut(400)) { WelcomeCard(tour) },
             targetShape = TargetShape.CIRCLE,
             animationDuration = 700,
             lineThickness = 3.dp,
@@ -162,6 +119,11 @@ fun MusicScreen(onBack: () -> Unit) {
                     if (level != Level.VERBOSE) println("Now Playing tour: $event")
                 }
             })
+            TourAutoplay(
+                active = autoplay && isShowcasing,
+                controller = tour,
+                performStep = { step -> if (step == 2) { isPlaying = true; true } else false }
+            )
             Scaffold(
                 containerColor = MaterialTheme.colorScheme.background,
                 snackbarHost = { SnackbarHost(snackbarHostState) }
@@ -184,7 +146,8 @@ fun MusicScreen(onBack: () -> Unit) {
                             onBack = onBack,
                             useTargetLayout = useTargetLayout,
                             onReplay = { isPlaying = false; isShowcasing = true },
-                            onLayoutChange = { useTargetLayout = it }
+                            onLayoutChange = { useTargetLayout = it },
+                            onAutoPlay = { isPlaying = false; autoplay = true; isShowcasing = true }
                         )
                         Spacer(Modifier.height(28.dp))
 
@@ -192,7 +155,7 @@ fun MusicScreen(onBack: () -> Unit) {
                         Artwork(
                             modifier = Modifier.showcase(
                                 index = 1,
-                                message = tourMessage(gravity = Gravity.Bottom) { TourCard(step = 1, scope = this) }
+                                message = tourMessage(gravity = Gravity.Bottom) { TourCard(step = 1, scope = this, controller = tour) }
                             ),
                             spinning = isPlaying
                         )
@@ -204,7 +167,7 @@ fun MusicScreen(onBack: () -> Unit) {
                             onToggleFavorite = { isFavorite = !isFavorite },
                             favoriteModifier = Modifier.showcase(
                                 index = 3,
-                                message = tourMessage { TourCard(step = 3, scope = this) }
+                                message = tourMessage { TourCard(step = 3, scope = this, controller = tour) }
                             )
                         )
                         Spacer(Modifier.height(20.dp))
@@ -220,7 +183,7 @@ fun MusicScreen(onBack: () -> Unit) {
                             onTogglePlay = { isPlaying = !isPlaying },
                             playModifier = Modifier.showcase(
                                 index = 2,
-                                message = tourMessage { TourCard(step = 2, scope = this, locked = true) },
+                                message = tourMessage { TourCard(step = 2, scope = this, locked = true, controller = tour) },
                                 canProceed = isPlaying
                             )
                         )
@@ -230,7 +193,7 @@ fun MusicScreen(onBack: () -> Unit) {
                         BottomActions(
                             queueModifier = Modifier.showcase(
                                 index = 4,
-                                message = tourMessage(gravity = Gravity.Top) { TourCard(step = 4, scope = this) }
+                                message = tourMessage(gravity = Gravity.Top) { TourCard(step = 4, scope = this, controller = tour) }
                             )
                         )
                         Spacer(Modifier.height(16.dp))
@@ -259,7 +222,8 @@ private fun Header(
     onBack: () -> Unit,
     useTargetLayout: Boolean,
     onReplay: () -> Unit,
-    onLayoutChange: (Boolean) -> Unit
+    onLayoutChange: (Boolean) -> Unit,
+    onAutoPlay: () -> Unit,
 ) {
     var menuOpen by remember { mutableStateOf(false) }
     Row(modifier = Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
@@ -285,7 +249,8 @@ private fun Header(
                 onDismiss = { menuOpen = false },
                 useTargetLayout = useTargetLayout,
                 onReplay = onReplay,
-                onLayoutChange = onLayoutChange
+                onLayoutChange = onLayoutChange,
+                onAutoPlay = onAutoPlay
             )
         }
     }
@@ -430,8 +395,9 @@ private val PlayerTourPalette = TourPalette(
 )
 
 @Composable
-private fun ShowcaseMsgScope.WelcomeCard() = WelcomeCard(
+private fun ShowcaseMsgScope.WelcomeCard(controller: TourController) = WelcomeCard(
     scope = this,
+    controller = controller,
     palette = PlayerTourPalette,
     icon = Icons.Outlined.MusicNote,
     iconBrush = Brush.linearGradient(listOf(Coral, Amber)),
@@ -461,8 +427,9 @@ private val tourSteps = listOf(
 )
 
 @Composable
-private fun TourCard(step: Int, scope: ShowcaseMsgScope, locked: Boolean = false) = TourCard(
+private fun TourCard(step: Int, scope: ShowcaseMsgScope, locked: Boolean = false, controller: TourController) = TourCard(
     step = step,
+    controller = controller,
     total = TOUR_STEPS,
     title = tourSteps[step - 1].title,
     body = tourSteps[step - 1].body,

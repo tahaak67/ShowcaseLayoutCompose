@@ -16,6 +16,15 @@ fun main() {
             val fontFamily = FontFamily(listOf(Font("NotoColorEmoji", notoEmojisBytes)))
             fontFamilyResolver.preload(fontFamily)
         }
-        App(openUrl = UrlLauncherWeb()::openUrl , onWebLoadFinish = ::onLoadFinished)
+        // index.html?scenario=banking&autoplay=1&layout=showcase opens a scenario directly, runs its
+        // tour hands-free and picks the layout (target | showcase)
+        val scenarioParam = demoParam("scenario")
+        App(
+            openUrl = UrlLauncherWeb()::openUrl,
+            onWebLoadFinish = ::onLoadFinished,
+            startScenario = Scenario.entries.firstOrNull { it.name.equals(scenarioParam, ignoreCase = true) },
+            autoPlay = demoParam("autoplay") == "1",
+            targetLayout = when (demoParam("layout")) { "target" -> true; "showcase" -> false; else -> null }
+        )
     }
 }
