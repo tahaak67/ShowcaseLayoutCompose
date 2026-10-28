@@ -61,8 +61,11 @@ Showcase Layout Compose can be used in **both** Jetpack Compose (native Android)
 Add the dependency to your module's `build.gradle` file like below
 
 ``` kotlin
-implementation("ly.com.tahaben:showcase-layout-compose:1.0.9")
+implementation("ly.com.tahaben:showcase-layout-compose:{latest-version}")
 ```
+> Latest version ![Maven Central](https://img.shields.io/maven-central/v/ly.com.tahaben/showcase-layout-compose)
+ or see [Releases](https://github.com/tahaben/showcase-layout-compose/releases).
+
 ## Usage
 
 #### Step 1
