@@ -66,6 +66,37 @@ implementation("ly.com.tahaben:showcase-layout-compose:{latest-version}")
 > Latest version ![Maven Central](https://img.shields.io/maven-central/v/ly.com.tahaben/showcase-layout-compose)
  or see [Releases](https://github.com/tahaben/showcase-layout-compose/releases).
 
+## AI agent skill
+
+This repo ships an [Agent Skill](https://agentskills.io) that teaches coding agents (Claude Code,
+Codex, Cursor, Gemini CLI, GitHub Copilot, ...) how to use Showcase Layout Compose correctly: which
+layout to pick, where to put it, how to number targets, locked steps, custom message cards,
+scrolling screens, UI tests, and the pitfalls that make a tour end early or highlight the wrong
+spot. Install it in your project, then ask your agent for a tour in plain words, for example
+*"Add a first-run tour to HomeScreen that highlights search, the filter chips and the FAB, and only
+show it once"*.
+
+| Agent | Install |
+|:--|:--|
+| Any agent ([skills CLI](https://github.com/vercel-labs/skills)) | `npx skills add tahaak67/ShowcaseLayoutCompose --skill showcase-layout-compose` |
+| Any agent (GitHub CLI) | `gh skill install tahaak67/ShowcaseLayoutCompose showcase-layout-compose` |
+| Claude Code | `/plugin install showcase-layout-compose --marketplace tahaak67/ShowcaseLayoutCompose`<br>or `/plugin marketplace add tahaak67/ShowcaseLayoutCompose` then `/plugin install showcase-layout-compose@showcase-layout-compose` |
+| Gemini CLI | `gemini skills install https://github.com/tahaak67/ShowcaseLayoutCompose.git --path skills/showcase-layout-compose` |
+
+Or copy the [`skills/showcase-layout-compose`](skills/showcase-layout-compose) folder into your
+project yourself:
+
+| Agent | Project folder | User folder |
+|:--|:--|:--|
+| Claude Code | `.claude/skills/` | `~/.claude/skills/` |
+| Codex | `.agents/skills/` | `~/.agents/skills/` |
+| Cursor | `.agents/skills/` or `.cursor/skills/` | `~/.cursor/skills/` |
+| Gemini CLI | `.agents/skills/` or `.gemini/skills/` | `~/.gemini/skills/` |
+| GitHub Copilot | `.agents/skills/` or `.github/skills/` | `~/.copilot/skills/` |
+
+The skill is versioned with the library and describes the latest release. When you upgrade the
+library, update the skill too (`npx skills update`, or copy the folder again).
+
 ## Usage
 
 #### Step 1
@@ -169,7 +200,7 @@ Starting from version 1.0.6, Showcase Layout Compose now offers a new layout opt
 - Highlights target elements with customizable shapes (circle, rectangle, or rounded rectangle)
 - Smooth animations between targets
 - Pulsing effect around the target for better visibility
-- All the same customization options as the original ShowcaseLayout
+- The same customization options as the original ShowcaseLayout, except arrows (`ShowcaseMsg.arrow` is a `ShowcaseLayout` feature)
 
 ### Usage
 
@@ -217,11 +248,15 @@ TargetShowcaseLayout(
 | Target shapes | Circle, Rectangle, Rounded Rectangle | Circle, Rectangle, Rounded Rectangle |
 | Animations | Smooth transitions between targets | Fade transitions |
 | Pulsing effect | Yes | No |
+| Arrows | No | Yes |
+| Text message background (`msgBackground`) | Tints the overlay for that step | A card behind the text |
 | Use cases | Focused UI tours, precise element highlighting | General app tours, feature introductions |
 
 ### TargetShowcaseLayout Parameters
 
-In addition to the parameters shared with ShowcaseLayout, TargetShowcaseLayout offers:
+In addition to the parameters shared with ShowcaseLayout, TargetShowcaseLayout offers the ones
+below. It draws no arrows, so it ignores `ShowcaseMsg.arrow`, and its `lineThickness` parameter is
+deprecated since 1.3.0.
 
 ```kotlin
 TargetShowcaseLayout(
@@ -235,7 +270,6 @@ TargetShowcaseLayout(
         "Welcome to TargetShowcaseLayout!",
         textStyle = TextStyle(color = Color.White)
     ),
-    lineThickness = 5.dp,
 
     // TargetShowcaseLayout specific parameters
     targetShape = TargetShape.CIRCLE, // CIRCLE, RECTANGLE, or ROUNDED_RECTANGLE
@@ -412,7 +446,8 @@ Use `ShowcaseMsg()` to add a message and customize it with arrow, background and
 ShowcaseMsg(
     // the message text to be displayed
     "Track your phone usage from here",
-    // text style for the message text
+    // text style for the message text. Since 1.3.0, leaving the color unset draws the text white
+    // or black, whichever reads better on the background card or the overlay
     textStyle = TextStyle(color = Color(0xFF827717)),
     // a background color for the text
     msgBackground = MaterialTheme.colors.primary,
@@ -420,7 +455,7 @@ ShowcaseMsg(
     roundedCorner = 15.dp,
     // determine if the message will be displayed above or below the target composable
     gravity = Gravity.Bottom,
-    // adds an arrow to be displayed with the message
+    // adds an arrow to be displayed with the message (ShowcaseLayout only)
     arrow = Arrow(color = MaterialTheme.colors.primary),
     // starting from version 1.0.3 ShowcaseMsg will have an enter and exit animation of FadeInOut by default you can disable it by using MsgAnimation.None
     enterAnim = MsgAnimation.FadeInOut(),
@@ -474,7 +509,8 @@ The same works for the `greeting` parameter and for `showGreeting(ShowcaseMsg { 
 
 #### Arrow
 
-Used with ShowcaseMsg to add an arrow pointing to the target
+Used with ShowcaseMsg to add an arrow pointing to the target. Arrows are drawn by `ShowcaseLayout`
+only; `TargetShowcaseLayout` ignores them.
 
 ```kotlin
 arrow = Arrow(
@@ -517,12 +553,30 @@ showcase(
             color = MaterialTheme.colors.primary,
             targetFrom = Side.Top,
             head = Head.CIRCLE, // head style
-            headSize = 30f, // the size of the circle
+            headSize = 11.dp, // the size of the circle (a Dp since 1.3.0, it was a pixel Float before)
             animSize = true // animates the arrow head size
         )
     )
 )
 ```
+
+## Migrating to 1.3.0
+
+- `Arrow.headSize` is now a `Dp` (default `9.dp`) instead of a pixel `Float` (default `25f`). Divide
+  an old value by about 2.75 for the same look on a typical phone, e.g. `headSize = 30f` becomes
+  `headSize = 11.dp`.
+- Message and arrow spacing is now defined in dp, so it looks the same on every screen density.
+  Phones look like before; desktop, web and tablets get consistent spacing.
+- When `textStyle` sets no color, messages are drawn white or black, whichever reads better on what
+  is behind them. Explicit colors are unchanged.
+- Message enter/exit fade durations (`MsgAnimation.FadeInOut(duration)`) are honored by both
+  layouts.
+- `TargetShowcaseLayout`'s `lineThickness` parameter is deprecated: it draws no arrows, so the value
+  never had an effect. Remove the argument.
+- Fixed: `Modifier.padding(..).showcase(..)` (any modifier chained before `.showcase()`) applied
+  those modifiers twice, shrinking the element and its highlight.
+- Fixed: `TargetShowcaseLayout` didn't show a custom composable message on step 1 when the tour was
+  started on the first frame.
 
 ## Logging Events
 In recent releases logs have been disabled by default, to print log statement of the current actions taken by compose layout register a listener in your ShowcaseLayout

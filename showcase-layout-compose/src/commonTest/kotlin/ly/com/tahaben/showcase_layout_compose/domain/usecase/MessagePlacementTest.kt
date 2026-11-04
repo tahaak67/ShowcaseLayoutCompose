@@ -34,6 +34,7 @@ class MessagePlacementTest {
         targetShape = shape,
         isGreeting = isGreeting,
         anchorNearEdge = anchorNearEdge,
+        spacing = LegacyPixelSpacing,
     )
 
     // ---- text messages: historical behaviour ----
@@ -146,8 +147,8 @@ class MessagePlacementTest {
 
     @Test
     fun targetLayoutMaxWidthMatchesHistoricalFormula() {
-        assertEquals(880, targetLayoutMessageMaxWidth(canvas))
-        assertEquals(1, targetLayoutMessageMaxWidth(Size(100f, 100f)))
+        assertEquals(880, targetLayoutMessageMaxWidth(canvas, LegacyPixelSpacing))
+        assertEquals(1, targetLayoutMessageMaxWidth(Size(100f, 100f), LegacyPixelSpacing))
     }
 
     @Test
@@ -159,6 +160,7 @@ class MessagePlacementTest {
             verticalOffset = 25f,
             outer = Rect(center = center, radius = 960f),
             canvasSize = canvas,
+            spacing = LegacyPixelSpacing,
         )
         // 1000 - 25 - 60 - 150
         assertEquals(MessagePlacement(Offset(390f, 765f), MessageSide.Above), placement)
@@ -173,6 +175,7 @@ class MessagePlacementTest {
             verticalOffset = 25f,
             outer = Rect(center = center, radius = 960f),
             canvasSize = canvas,
+            spacing = LegacyPixelSpacing,
         )
         // 150 + 25 + 150
         assertEquals(MessagePlacement(Offset(390f, 325f), MessageSide.Below), placement)
@@ -187,6 +190,7 @@ class MessagePlacementTest {
             verticalOffset = 25f,
             outer = Rect(center = center, radius = 960f),
             canvasSize = canvas,
+            spacing = LegacyPixelSpacing,
         )
         // 1080 - 300 - 150
         assertEquals(630f, placement.offset.x)
@@ -202,6 +206,7 @@ class MessagePlacementTest {
             outer = Rect(center = Offset(540f, centerY), radius = 3000f),
             canvasSize = Size(1080f, canvasHeight),
             gravity = gravity,
+            spacing = LegacyPixelSpacing,
         )
 
     @Test

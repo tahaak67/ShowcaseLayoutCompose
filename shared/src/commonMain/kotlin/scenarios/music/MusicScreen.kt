@@ -6,16 +6,53 @@ import androidx.compose.animation.core.LinearEasing
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
-import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.outlined.QueueMusic
-import androidx.compose.material.icons.filled.*
-import androidx.compose.material.icons.outlined.*
-import androidx.compose.material3.*
-import androidx.compose.runtime.*
+import androidx.compose.material.icons.filled.Favorite
+import androidx.compose.material.icons.filled.Pause
+import androidx.compose.material.icons.filled.PlayArrow
+import androidx.compose.material.icons.filled.SkipNext
+import androidx.compose.material.icons.filled.SkipPrevious
+import androidx.compose.material.icons.outlined.FavoriteBorder
+import androidx.compose.material.icons.outlined.KeyboardArrowDown
+import androidx.compose.material.icons.outlined.MoreVert
+import androidx.compose.material.icons.outlined.MusicNote
+import androidx.compose.material.icons.outlined.Repeat
+import androidx.compose.material.icons.outlined.Shuffle
+import androidx.compose.material.icons.outlined.Speaker
+import androidx.compose.material.icons.outlined.Subtitles
+import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Scaffold
+import androidx.compose.material3.Slider
+import androidx.compose.material3.SliderDefaults
+import androidx.compose.material3.SnackbarHost
+import androidx.compose.material3.SnackbarHostState
+import androidx.compose.material3.Text
+import androidx.compose.material3.darkColorScheme
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableFloatStateOf
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Brush
@@ -28,9 +65,20 @@ import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import ly.com.tahaben.showcase_layout_compose.domain.Level
 import ly.com.tahaben.showcase_layout_compose.domain.ShowcaseEventListener
-import ly.com.tahaben.showcase_layout_compose.model.*
+import ly.com.tahaben.showcase_layout_compose.model.Arrow
+import ly.com.tahaben.showcase_layout_compose.model.Gravity
+import ly.com.tahaben.showcase_layout_compose.model.Head
+import ly.com.tahaben.showcase_layout_compose.model.MsgAnimation
+import ly.com.tahaben.showcase_layout_compose.model.ShowcaseMsg
+import ly.com.tahaben.showcase_layout_compose.model.ShowcaseMsgScope
+import ly.com.tahaben.showcase_layout_compose.model.TargetShape
 import ly.com.tahaben.showcase_layout_compose.ui.ShowcaseLayoutDefaults
-import scenarios.*
+import scenarios.TourAutoplay
+import scenarios.TourCard
+import scenarios.TourController
+import scenarios.TourOptionsMenu
+import scenarios.TourPalette
+import scenarios.WelcomeCard
 import kotlin.math.roundToInt
 
 // Now Playing palette
@@ -210,7 +258,7 @@ private fun tourMessage(
     content: @Composable ShowcaseMsgScope.() -> Unit
 ) = ShowcaseMsg(
     gravity = gravity,
-    arrow = Arrow(color = Ink, head = Head.CIRCLE, headSize = 18f, animationDuration = 500),
+    arrow = Arrow(color = Ink, head = Head.CIRCLE, headSize = 6.5.dp, animationDuration = 500),
     enterAnim = MsgAnimation.FadeInOut(350),
     exitAnim = MsgAnimation.FadeInOut(250),
     content = content

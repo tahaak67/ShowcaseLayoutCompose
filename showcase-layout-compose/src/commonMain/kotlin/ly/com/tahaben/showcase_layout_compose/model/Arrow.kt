@@ -1,6 +1,8 @@
 package ly.com.tahaben.showcase_layout_compose.model
 
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.unit.Dp
+import androidx.compose.ui.unit.dp
 
 /**
  *     Copyright 2023 Taha Ben Ashur (tahaak67)
@@ -22,11 +24,15 @@ import androidx.compose.ui.graphics.Color
 /**
  * Arrow
  *
+ * An arrow drawn from the message to the target. Arrows are drawn by `ShowcaseLayout` only;
+ * `TargetShowcaseLayout` ignores [ShowcaseMsg.arrow].
+ *
  * @param targetFrom the direction from where the arrow will point at the target, Ex: Side.Right.
  * @param curved draw a curvy arrow from the middle of the screen to target, works best if the target is on the right/left edge of screen.
  * @param animationDuration the time taken to animate the arrow in milliseconds.
  * @param head The shape of the arrow head, if null only the line will be drawn without the arrow head.
- * @param headSize size of the arrow head default is 25.
+ * @param headSize size of the arrow head, default is 9.dp. Before 1.3.0 this was a `Float` in
+ * pixels (default 25f); divide an old value by ~2.75 for the same look on a typical phone.
  * @param color color of the arrow.
  * @param animSize animate the head size from 0 to [headSize] when entering and reverse it on exit.
  **/
@@ -36,7 +42,7 @@ data class Arrow(
     val curved: Boolean = false,
     val animationDuration: Int = 1000,
     val head: Head? = Head.TRIANGLE,
-    val headSize: Float = 25f,
+    val headSize: Dp = 9.dp,
     val color: Color = Color.White,
     val animSize: Boolean = true
 )

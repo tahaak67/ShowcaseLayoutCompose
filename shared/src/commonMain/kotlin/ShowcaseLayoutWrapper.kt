@@ -17,7 +17,7 @@ import ly.com.tahaben.showcase_layout_compose.ui.TargetShowcaseLayout
  * @param animationDuration total animation time taken when switching from current to next target in milliseconds.
  * @param onFinish what happens when all items are showcased.
  * @param greeting greeting message to be shown before showcasing the first composable, leave [initIndex] at 0 if you want to use this.
- * @param lineThickness thickness of the arrow line in dp.
+ * @param lineThickness thickness of the arrow line in dp (only used by ShowcaseLayout: TargetShowcaseLayout draws no arrows).
  * @param targetShape the shape of the target highlight (RECTANGLE, CIRCLE, or ROUNDED_RECTANGLE).
  * @param cornerRadius the corner radius for the ROUNDED_RECTANGLE shape in dp.
  * @param animateToNextTarget if true, the target shape will animate smoothly from one target to the next when the index changes (only used in TargetShowcaseLayout).
@@ -47,7 +47,6 @@ fun ShowcaseLayoutWrapper(
             animationDuration = animationDuration,
             onFinish = onFinish,
             greeting = greeting,
-            lineThickness = lineThickness,
             targetShape = targetShape,
             cornerRadius = cornerRadius,
             animateToNextTarget = animateToNextTarget,

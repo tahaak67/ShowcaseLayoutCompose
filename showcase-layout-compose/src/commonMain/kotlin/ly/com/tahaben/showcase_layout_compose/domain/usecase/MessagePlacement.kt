@@ -35,21 +35,6 @@ internal data class MessagePlacement(val offset: Offset, val side: MessageSide)
 /** Bounds of a custom message composable, reported from layout to the canvas drawing the arrow. */
 internal data class PlacedMessage(val bounds: Rect, val side: MessageSide)
 
-/** Horizontal room taken away from the canvas width when measuring a message in `ShowcaseLayout`. */
-internal const val MESSAGE_MAX_WIDTH_INSET_PX = 90
-
-/** Distance (px) between the target edge and the text top-left in `ShowcaseLayout`. */
-internal const val TEXT_BASE_OFFSET_PX = 230f
-
-/** Padding (px) the text card extends around the measured text in `ShowcaseLayout`. */
-internal const val CARD_INSET_PX = 18f
-
-/**
- * Distance (px) between the target edge and the near edge of a custom composable message. Equals
- * the visual gap a one-line text card has today, so arrows keep the same length.
- */
-internal const val CUSTOM_MESSAGE_GAP_PX = TEXT_BASE_OFFSET_PX - CARD_INSET_PX
-
 /**
  * Computes where a message goes in `ShowcaseLayout`.
  *
@@ -60,8 +45,9 @@ internal const val CUSTOM_MESSAGE_GAP_PX = TEXT_BASE_OFFSET_PX - CARD_INSET_PX
  * @param isGreeting true for the greeting / index 0 step.
  * @param anchorNearEdge false keeps the historical text behaviour where [messageSize] height is
  * ignored and the returned offset is the text top-left. True (custom content) puts the message's
- * edge facing the target [CUSTOM_MESSAGE_GAP_PX] away from it, flips `Gravity.Auto` to the bottom
- * when the whole message would not fit above, and centers a greeting on both axes.
+ * edge facing the target [ShowcaseSpacing.customMessageGap] away from it, flips `Gravity.Auto` to
+ * the bottom when the whole message would not fit above, and centers a greeting on both axes.
+ * @param spacing the layout's distances in px, see [ShowcaseSpacing.from].
  * @param log receives human readable placement decisions.
  */
 internal fun computeShowcaseMessagePlacement(
@@ -74,6 +60,7 @@ internal fun computeShowcaseMessagePlacement(
     targetShape: TargetShape,
     isGreeting: Boolean,
     anchorNearEdge: Boolean,
+    spacing: ShowcaseSpacing,
     log: (String) -> Unit = {},
 ): MessagePlacement {
     val targetY = targetPosition.y
@@ -82,7 +69,7 @@ internal fun computeShowcaseMessagePlacement(
 
     // Circle targets need extra room so the arrow can start outside the circle
     val additionalOffset = if (targetShape == TargetShape.CIRCLE) {
-        maxOf(targetWidth, targetHeight) / 2 + 50
+        maxOf(targetWidth, targetHeight) / 2 + spacing.circleExtraOffset
     } else {
         0f
     }
@@ -93,7 +80,7 @@ internal fun computeShowcaseMessagePlacement(
         side = MessageSide.Center
         yOffset = if (anchorNearEdge) (canvasSize.height - messageSize.height) / 2 else canvasSize.height / 2
     } else if (anchorNearEdge) {
-        val gap = CUSTOM_MESSAGE_GAP_PX + additionalOffset
+        val gap = spacing.customMessageGap + additionalOffset
         val topPosition = targetY - gap - messageSize.height
         val bottomPosition = targetY + targetHeight + gap
         when (gravity) {
@@ -114,7 +101,7 @@ internal fun computeShowcaseMessagePlacement(
             }
         }
     } else {
-        val baseOffset = TEXT_BASE_OFFSET_PX + additionalOffset
+        val baseOffset = spacing.textBaseOffset + additionalOffset
         when (gravity) {
             Gravity.Top -> {
                 side = MessageSide.Above; yOffset = targetY - baseOffset
@@ -195,15 +182,12 @@ internal fun computeShowcaseMessagePlacement(
     return MessagePlacement(Offset(clampedX, yOffset), side)
 }
 
-/** Safety padding (px) used by `TargetShowcaseLayout` when placing a message next to a target. */
-internal const val TARGET_LAYOUT_SAFETY_PADDING_PX = 100f
-
 /** Maximum width (px) of a message placed next to a target in `TargetShowcaseLayout`. */
-internal fun targetLayoutMessageMaxWidth(canvasSize: Size): Int {
+internal fun targetLayoutMessageMaxWidth(canvasSize: Size, spacing: ShowcaseSpacing): Int {
     val outerDiameter = max(canvasSize.width, canvasSize.height)
     val calculatedWidth = min(
-        canvasSize.width.toInt() - 200,
-        (outerDiameter - 4 * TARGET_LAYOUT_SAFETY_PADDING_PX).toInt()
+        (canvasSize.width - spacing.targetMessageWidthInset).toInt(),
+        (outerDiameter - 4 * spacing.targetSafetyPadding).toInt()
     )
     // Ensure the width is always positive to avoid a Constraints exception
     return max(1, calculatedWidth)
@@ -220,6 +204,7 @@ internal fun targetLayoutMessageMaxWidth(canvasSize: Size): Int {
  * @param outer bounds of the outer circle around the target.
  * @param canvasSize size of the overlay.
  * @param gravity the side of the target the message asked for.
+ * @param spacing the layout's distances in px, see [ShowcaseSpacing.from].
  */
 internal fun computeTargetLayoutMessagePlacement(
     messageSize: IntSize,
@@ -228,9 +213,10 @@ internal fun computeTargetLayoutMessagePlacement(
     outer: Rect,
     canvasSize: Size,
     gravity: Gravity = Gravity.Auto,
+    spacing: ShowcaseSpacing,
     log: (String) -> Unit = {},
 ): MessagePlacement {
-    val safetyPadding = TARGET_LAYOUT_SAFETY_PADDING_PX
+    val safetyPadding = spacing.targetSafetyPadding
     val messageHeight = messageSize.height
     val messageWidth = messageSize.width
 

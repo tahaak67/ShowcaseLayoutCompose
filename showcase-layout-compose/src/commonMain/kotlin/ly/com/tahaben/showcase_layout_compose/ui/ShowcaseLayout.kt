@@ -64,14 +64,14 @@ import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
 import ly.com.tahaben.showcase_layout_compose.domain.Level
 import ly.com.tahaben.showcase_layout_compose.domain.ShowcaseEventListener
-import ly.com.tahaben.showcase_layout_compose.domain.usecase.CARD_INSET_PX
-import ly.com.tahaben.showcase_layout_compose.domain.usecase.MESSAGE_MAX_WIDTH_INSET_PX
 import ly.com.tahaben.showcase_layout_compose.domain.usecase.MessageSide
 import ly.com.tahaben.showcase_layout_compose.domain.usecase.PlacedMessage
+import ly.com.tahaben.showcase_layout_compose.domain.usecase.ShowcaseSpacing
 import ly.com.tahaben.showcase_layout_compose.domain.usecase.addRoundedTarget
 import ly.com.tahaben.showcase_layout_compose.domain.usecase.computeShowcaseMessagePlacement
 import ly.com.tahaben.showcase_layout_compose.domain.usecase.isTapInsideTarget
 import ly.com.tahaben.showcase_layout_compose.domain.usecase.validateInitIndex
+import ly.com.tahaben.showcase_layout_compose.domain.usecase.withContrastingColor
 import ly.com.tahaben.showcase_layout_compose.model.Arrow
 import ly.com.tahaben.showcase_layout_compose.model.Gravity
 import ly.com.tahaben.showcase_layout_compose.model.Head
@@ -104,7 +104,6 @@ import kotlin.math.max
 
 private const val TAG = "ShowcaseLayout "
 private const val INDEX_RESET_DELAY = 250L
-private const val TARGET_TAP_TOLERANCE_PX = 16f
 
 /**
  * ShowcaseLayout
@@ -214,6 +213,8 @@ fun ShowcaseLayout(
             val shouldDrawArrow = (message?.arrow != null && isArrowDelayOver)
             val arrowColor = message?.arrow?.color ?: Color.White
             val density = LocalDensity.current
+            /** message and arrow distances, defined in dp */
+            val spacing = remember(density) { ShowcaseSpacing.from(density) }
             var arrowAnimDuration by remember { mutableStateOf(message?.arrow?.animationDuration) }
             val animMsgTextAlpha = remember { Animatable(0f) }
             val animMsgAlpha = remember { Animatable(0f) }
@@ -259,7 +260,7 @@ fun ShowcaseLayout(
                             message?.arrow?.let { arrow ->
                                 /** show the arrow if anim is false */
                                 if (!arrow.animSize) {
-                                    animArrowHead.snapTo(arrow.headSize)
+                                    animArrowHead.snapTo(with(density) { arrow.headSize.toPx() })
                                 }
                                 /** move the arrow */
                                 animArrow.animateTo(
@@ -272,7 +273,7 @@ fun ShowcaseLayout(
                                 /** animate the size of the arrow */
                                 if (arrow.animSize) {
                                     animArrowHead.animateTo(
-                                        arrow.headSize,
+                                        with(density) { arrow.headSize.toPx() },
                                         tween(
                                             durationMillis = arrowAnimDuration
                                                 ?: arrow.animationDuration
@@ -362,7 +363,7 @@ fun ShowcaseLayout(
                         )
                         when (msg.exitAnim) {
                             is MsgAnimation.FadeInOut -> {
-                                val duration = msg.enterAnim.duration
+                                val duration = msg.exitAnim.duration
                                 animMsgTextAlpha.animateTo(0f, tween(duration))
                                 if (msg.msgBackground != null)
                                 animMsgAlpha.animateTo(0f, tween(duration))
@@ -471,7 +472,7 @@ fun ShowcaseLayout(
                 /** when enabled, only taps inside the target shape advance the showcase
                  * (the greeting/initial screen always advances on any tap) */
                 if (advanceOnTargetTapOnly && currentIndex != 0 && !isSingleGreeting &&
-                    !isTapInsideTarget(position, offset, itemSize, targetShape, TARGET_TAP_TOLERANCE_PX)
+                    !isTapInsideTarget(position, offset, itemSize, targetShape, spacing.targetTapTolerance)
                 ) {
                     scope.showcaseEventListener?.onEvent(
                         Level.VERBOSE,
@@ -633,9 +634,10 @@ fun ShowcaseLayout(
                              */
                             val result = textMeasurer.measure(
                                 msg.text,
-                                style = msg.textStyle,
+                                /** no color set: white or black, whichever reads on the card or overlay */
+                                style = msg.textStyle.withContrastingColor(msg.msgBackground ?: colors.overlayColor),
                                 overflow = TextOverflow.Visible,
-                                constraints = Constraints(0, max(1, constraints.maxWidth - MESSAGE_MAX_WIDTH_INSET_PX))
+                                constraints = Constraints(0, max(1, constraints.maxWidth - spacing.messageMaxWidthInset))
                             )
                             /** Determine if message will be shown on top or below target and its horizontal alignment */
                             val placement = computeShowcaseMessagePlacement(
@@ -648,17 +650,18 @@ fun ShowcaseLayout(
                                 targetShape = targetShape,
                                 isGreeting = isGreetingStep,
                                 anchorNearEdge = false,
+                                spacing = spacing,
                                 log = { scope.showcaseEventListener?.onEvent(Level.INFO, TAG + "index: $currentIndex $it") }
                             )
                             textOffset = placement.offset
                             messageSide = placement.side
                             textResult = result
                             cardRect = Rect(
-                                Offset(textOffset.x - CARD_INSET_PX, textOffset.y - CARD_INSET_PX),
-                                IntSize(
-                                    result.size.width + 36,
-                                    result.size.height + 36
-                                ).toSize()
+                                Offset(textOffset.x - spacing.cardInset, textOffset.y - spacing.cardInset),
+                                Size(
+                                    result.size.width + 2 * spacing.cardInset,
+                                    result.size.height + 2 * spacing.cardInset
+                                )
                             )
 
                             // Draw the message card
@@ -684,7 +687,7 @@ fun ShowcaseLayout(
 
                         // Draw the arrow if needed
                         val hasArrowHead = msg.arrow?.head != null
-                        val arrowHeadMargin = (msg.arrow?.headSize ?: Arrow().headSize) + 25
+                        val arrowHeadMargin = (msg.arrow?.headSize ?: Arrow().headSize).toPx() + spacing.arrowHeadGap
 
                         if (currentIndex > 0 && shouldDrawArrow) {
                             // Calculate card center
@@ -716,10 +719,10 @@ fun ShowcaseLayout(
                                     moveTo(start.x, start.y)
 
                                     val xPoint =
-                                        if ((offset.x + itemSize.width + 80) > size.width) {
-                                            offset.x - 80
+                                        if ((offset.x + itemSize.width + spacing.curvedArrowEdgeRoom) > size.width) {
+                                            offset.x - spacing.curvedArrowEdgeRoom
                                         } else {
-                                            (offset.x + itemSize.width + 50)
+                                            (offset.x + itemSize.width + spacing.curvedArrowEndGap)
                                         }
                                     quadraticTo(
                                         size.width / 2, offset.y + itemSize.height + 0,
@@ -733,25 +736,25 @@ fun ShowcaseLayout(
                                         Side.Top -> if (targetShape == TargetShape.CIRCLE) {
                                             Offset(cardCenterX, cardOffset.y + cardSize.height)
                                         } else {
-                                            Offset(offset.x + (itemSize.width / 2), offset.y - 180)
+                                            Offset(offset.x + (itemSize.width / 2), offset.y - spacing.arrowStartAbove)
                                         }
 
                                         Side.Bottom -> if (targetShape == TargetShape.CIRCLE) {
                                             Offset(cardCenterX, cardOffset.y)
                                         } else {
-                                            Offset(offset.x + (itemSize.width / 2), offset.y + (itemSize.height + 200))
+                                            Offset(offset.x + (itemSize.width / 2), offset.y + (itemSize.height + spacing.arrowStartAside))
                                         }
 
                                         Side.Left -> if (targetShape == TargetShape.CIRCLE) {
                                             Offset(cardOffset.x + cardSize.width, cardCenterY)
                                         } else {
-                                            Offset(offset.x - 200, offset.y + (itemSize.height / 2))
+                                            Offset(offset.x - spacing.arrowStartAside, offset.y + (itemSize.height / 2))
                                         }
 
                                         Side.Right -> if (targetShape == TargetShape.CIRCLE) {
                                             Offset(cardOffset.x, cardCenterY)
                                         } else {
-                                            Offset(offset.x + (itemSize.width + 200), offset.y + (itemSize.height / 2))
+                                            Offset(offset.x + (itemSize.width + spacing.arrowStartAside), offset.y + (itemSize.height / 2))
                                         }
 
                                         null -> null
@@ -932,7 +935,7 @@ fun ShowcaseLayout(
                         .layout { measurable, layoutConstraints ->
                             val placeable = measurable.measure(
                                 Constraints(
-                                    maxWidth = max(1, layoutConstraints.maxWidth - MESSAGE_MAX_WIDTH_INSET_PX),
+                                    maxWidth = max(1, layoutConstraints.maxWidth - spacing.messageMaxWidthInset),
                                     maxHeight = layoutConstraints.maxHeight
                                 )
                             )
@@ -954,6 +957,7 @@ fun ShowcaseLayout(
                                     targetShape = targetShape,
                                     isGreeting = isGreetingStep,
                                     anchorNearEdge = true,
+                                    spacing = spacing,
                                     log = {
                                         scope.showcaseEventListener?.onEvent(
                                             Level.INFO,
@@ -1093,8 +1097,10 @@ class ShowcaseScopeImpl(greeting: ShowcaseMsg?) : ShowcaseScope {
         onProceed: (() -> Unit)?
     ): Modifier {
         require(index >= 1) { "Index must be 1 or greater" }
+        /** `Modifier.` on purpose: a bare `onGloballyPositioned` would resolve against this
+         * extension's receiver and apply the modifiers chained before `.showcase()` a second time */
         return this.stepRegistration(index, canProceed, onProceed, stepRegistry).then(
-            onGloballyPositioned {
+            Modifier.onGloballyPositioned {
                 if (it.isAttached) {
                     showcaseDataHashMap[index] =
                         ShowcaseData(it.size, it.positionInRoot(), message, it)
