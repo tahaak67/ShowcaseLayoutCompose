@@ -3,12 +3,21 @@ package ly.com.tahaben.showcase_layout_compose.ui
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.Immutable
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.unit.Dp
+import androidx.compose.ui.unit.dp
 
 
 /**
  * Contains the default values used by [ShowcaseLayout] and [TargetShowcaseLayout].
  */
 object ShowcaseLayoutDefaults {
+
+    /**
+     * Space added around every target by default (since 1.3.0), so the highlight doesn't sit tight
+     * against the element's edge or cut off its shadow. Pass `targetPadding = 0.dp` for the exact
+     * bounds, as before 1.3.0.
+     */
+    val TargetPadding: Dp = 4.dp
 
     /**
      * Colors used to draw the showcase overlay.

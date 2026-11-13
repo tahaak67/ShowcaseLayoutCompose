@@ -1,0 +1,13 @@
+schema_version: "1.1"
+name: first-run-tour-notes-home
+expected_outcome: |
+  HomeScreen gets a 3-step tour (search action, filter chips, FAB) on a showcase layout that wraps the
+  whole Scaffold, so the top bar and FAB are inside the content lambda and dimmed. Indices are 1..3
+  with no gaps. The tour starts from a LaunchedEffect only when the existing SettingsStore says it
+  hasn't been seen, and onFinish sets isShowcasing = false and saves the flag through SettingsStore.
+  With no layout or arrows requested, TargetShowcaseLayout is the expected choice, without
+  lineThickness or arrows. Steps use custom composable cards with Next/Skip. The code compiles against
+  showcase-layout-compose 1.3.0.
+  The highlight shape fits the FAB's 16dp corners (no larger radius, no CIRCLE), so the button isn't clipped.
+context:
+  scaffold_script: place-files.sh

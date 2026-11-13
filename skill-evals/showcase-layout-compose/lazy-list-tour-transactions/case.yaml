@@ -1,0 +1,13 @@
+schema_version: "1.1"
+name: lazy-list-tour-transactions
+expected_outcome: |
+  The Export CSV button is the last item of a 62-item LazyColumn, so it isn't composed when the tour
+  starts. The agent recognizes that an off-screen lazy item can't simply be step 3 (unregistered
+  targets end the tour early) and handles it with a working approach: it scrolls the button into view
+  before it is shown, or shows it as a separate showcaseItem after scrolling, or moves/duplicates the
+  export action somewhere that is always composed, and explains the choice. The summary card and a
+  visible transaction row are steps 1 and 2. The tour is shown once via SettingsStore and onFinish
+  resets isShowcasing. The code compiles against 1.3.0.
+  The highlight shape fits the summary card's 12dp corners (no larger radius, no CIRCLE).
+context:
+  scaffold_script: place-files.sh

@@ -27,7 +27,10 @@ import androidx.compose.ui.unit.dp
  * An arrow drawn from the message to the target. Arrows are drawn by `ShowcaseLayout` only;
  * `TargetShowcaseLayout` ignores [ShowcaseMsg.arrow].
  *
- * @param targetFrom the direction from where the arrow will point at the target, Ex: Side.Right.
+ * @param targetFrom the side of the target the arrow comes from, Ex: Side.Right. Since 1.3.0 a
+ * `Side.Top` or `Side.Bottom` arrow follows the message: it comes from whichever side the message
+ * ended up on, so `Gravity.Auto` and a gravity that contradicts this value still give a matching
+ * arrow. `Side.Left` and `Side.Right` are always kept.
  * @param curved draw a curvy arrow from the middle of the screen to target, works best if the target is on the right/left edge of screen.
  * @param animationDuration the time taken to animate the arrow in milliseconds.
  * @param head The shape of the arrow head, if null only the line will be drawn without the arrow head.

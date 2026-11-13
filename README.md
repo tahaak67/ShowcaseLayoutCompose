@@ -274,6 +274,7 @@ TargetShowcaseLayout(
     // TargetShowcaseLayout specific parameters
     targetShape = TargetShape.CIRCLE, // CIRCLE, RECTANGLE, or ROUNDED_RECTANGLE
     cornerRadius = 8.dp, // Only used with ROUNDED_RECTANGLE
+    targetPadding = 4.dp, // Space around each target (the default); 0.dp for the exact bounds
     animateToNextTarget = true // Smooth animation between targets, otherwise shrink and expand on each target
 ) {
     // Your UI content here
@@ -577,6 +578,16 @@ showcase(
   those modifiers twice, shrinking the element and its highlight.
 - Fixed: `TargetShowcaseLayout` didn't show a custom composable message on step 1 when the tour was
   started on the first frame.
+- Fixed: `ShowcaseLayout`'s highlight flew in from the top-left corner when the showcase started
+  before its first target was laid out. It now appears on the target.
+- New `targetPadding` on both layouts, default `4.dp`: space around every highlighted element, so
+  the cutout doesn't sit tight against its edge or cut off its shadow (a FAB used to look cropped).
+  The tap area and a locked step's touch area grow with it, and rounded corners stay concentric.
+  Pass `targetPadding = 0.dp` for the exact bounds of earlier versions.
+- An arrow with `targetFrom = Side.Top` or `Side.Bottom` now comes from the side its message is on,
+  for text messages too (custom messages already did this). With the defaults (`Side.Bottom` and
+  `Gravity.Auto`, which puts the text above when there is room) the arrow used to come from below
+  while the text sat above. `Side.Left` and `Side.Right` are unchanged.
 
 ## Logging Events
 In recent releases logs have been disabled by default, to print log statement of the current actions taken by compose layout register a listener in your ShowcaseLayout

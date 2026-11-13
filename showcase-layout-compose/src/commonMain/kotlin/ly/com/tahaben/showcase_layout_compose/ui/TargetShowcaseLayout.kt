@@ -1,13 +1,7 @@
 package ly.com.tahaben.showcase_layout_compose.ui
 
 import androidx.compose.animation.animateColorAsState
-import androidx.compose.animation.core.Animatable
-import androidx.compose.animation.core.AnimationVector1D
-import androidx.compose.animation.core.FastOutLinearInEasing
-import androidx.compose.animation.core.FastOutSlowInEasing
-import androidx.compose.animation.core.RepeatMode
-import androidx.compose.animation.core.infiniteRepeatable
-import androidx.compose.animation.core.tween
+import androidx.compose.animation.core.*
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.gestures.awaitEachGesture
 import androidx.compose.foundation.gestures.awaitFirstDown
@@ -16,18 +10,7 @@ import androidx.compose.foundation.gestures.waitForUpOrCancellation
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.runtime.Composable
-import androidx.compose.runtime.LaunchedEffect
-import androidx.compose.runtime.collectAsState
-import androidx.compose.runtime.derivedStateOf
-import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableIntStateOf
-import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.remember
-import androidx.compose.runtime.rememberCoroutineScope
-import androidx.compose.runtime.rememberUpdatedState
-import androidx.compose.runtime.setValue
-import androidx.compose.runtime.snapshotFlow
+import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.geometry.CornerRadius
 import androidx.compose.ui.geometry.Offset
@@ -49,30 +32,16 @@ import androidx.compose.ui.semantics.testTag
 import androidx.compose.ui.text.drawText
 import androidx.compose.ui.text.rememberTextMeasurer
 import androidx.compose.ui.text.style.TextOverflow
-import androidx.compose.ui.unit.Constraints
-import androidx.compose.ui.unit.Dp
-import androidx.compose.ui.unit.IntSize
-import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.round
+import androidx.compose.ui.unit.*
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
 import ly.com.tahaben.showcase_layout_compose.domain.Level
-import ly.com.tahaben.showcase_layout_compose.domain.usecase.ShowcaseSpacing
-import ly.com.tahaben.showcase_layout_compose.domain.usecase.addRoundedTarget
-import ly.com.tahaben.showcase_layout_compose.domain.usecase.computeTargetLayoutMessagePlacement
-import ly.com.tahaben.showcase_layout_compose.domain.usecase.coveringRadius
-import ly.com.tahaben.showcase_layout_compose.domain.usecase.isTapInsideTarget
-import ly.com.tahaben.showcase_layout_compose.domain.usecase.targetLayoutMessageMaxWidth
-import ly.com.tahaben.showcase_layout_compose.domain.usecase.validateInitIndex
-import ly.com.tahaben.showcase_layout_compose.domain.usecase.withContrastingColor
-import ly.com.tahaben.showcase_layout_compose.model.Gravity
-import ly.com.tahaben.showcase_layout_compose.model.MsgAnimation
-import ly.com.tahaben.showcase_layout_compose.model.ShowcaseMsg
-import ly.com.tahaben.showcase_layout_compose.model.ShowcaseMsgScope
-import ly.com.tahaben.showcase_layout_compose.model.TargetShape
+import ly.com.tahaben.showcase_layout_compose.domain.usecase.*
+import ly.com.tahaben.showcase_layout_compose.model.*
 import kotlin.math.max
+import kotlin.time.Duration.Companion.milliseconds
 
 
 /**
@@ -109,6 +78,9 @@ private const val INDEX_RESET_DELAY = 250L
  * @param greeting greeting message to be shown before showcasing the first composable, leave [initIndex] at 0 if you want to use this.
  * @param targetShape the shape of the target highlight, can be either CIRCLE, RECTANGLE, or ROUNDED_RECTANGLE.
  * @param cornerRadius the radius of the corners when targetShape is ROUNDED_RECTANGLE.
+ * @param targetPadding space added around every target, so the highlight doesn't sit tight against
+ * the element's edge or cut off its shadow. Also enlarges the tap and locked-step touch areas, and
+ * the ROUNDED_RECTANGLE corners grow by the same amount. 0.dp gives the exact bounds (before 1.3.0).
  * @param animateToNextTarget if true, the target shape will animate smoothly from one target to the next when the index changes.
  *                           If false, the shape will shrink at the current location, then expand at the new location.
  * @param advanceOnTargetTapOnly when true, only taps inside the highlighted target shape advance/dismiss the showcase; taps elsewhere are ignored. The greeting/initial screen always advances on any tap. Defaults to false (tap anywhere).
@@ -123,6 +95,7 @@ fun TargetShowcaseLayout(
     greeting: ShowcaseMsg? = null,
     targetShape: TargetShape = TargetShape.ROUNDED_RECTANGLE,
     cornerRadius: Dp = 8.dp,
+    targetPadding: Dp = ShowcaseLayoutDefaults.TargetPadding,
     animateToNextTarget: Boolean = true,
     advanceOnTargetTapOnly: Boolean = false,
     colors: ShowcaseLayoutDefaults.Colors = ShowcaseLayoutDefaults.colors(),
@@ -140,6 +113,7 @@ fun TargetShowcaseLayout(
     val scope = remember { ShowcaseScopeImpl(greeting) }
     scope.setGreeting(greeting)
     scope.layoutCoordinatesState = layoutCoordinatesState
+    scope.targetPaddingPx = with(LocalDensity.current) { targetPadding.toPx() }
     /** per-step canProceed flags and onProceed callbacks, published by the showcase modifiers */
     val stepRegistry = remember { StepRegistry() }
     scope.stepRegistry = stepRegistry
@@ -246,7 +220,7 @@ fun TargetShowcaseLayout(
                             )
                         )
                     }
-                    delay(pulseDuration.toLong())
+                    delay(pulseDuration.milliseconds)
                 }
             }
 
@@ -280,7 +254,7 @@ fun TargetShowcaseLayout(
                     animatedY.snapTo(offset.y)
                     message = scope.getMessageFor(currentIndex)
                     canvasColor =  message?.msgBackground ?: colors.overlayColor
-                    delay(animationDuration.toLong())
+                    delay(animationDuration.milliseconds)
                     fadeInMessage(message, messageTextAlpha)
                     outerAnimatable.animateTo(
                         1f,
@@ -349,7 +323,7 @@ fun TargetShowcaseLayout(
                             animatedWidth.animateTo(itemSize.width)
                         }
 
-                        delay(animationDuration.toLong() / 3)
+                        delay((animationDuration.toLong() / 3).milliseconds)
                         canvasAlpha.animateTo(1f)
 
                         // Expand at new location
@@ -370,7 +344,7 @@ fun TargetShowcaseLayout(
 
                     // After the animation has completed, fade the message text back in
                     launch {
-                        delay(animationDuration.toLong())
+                        delay(animationDuration.milliseconds)
                         fadeInMessage(message, messageTextAlpha)
                     }
                 }
@@ -430,7 +404,7 @@ fun TargetShowcaseLayout(
                         }
 
                         // Wait for animations to complete
-                        delay((animationDuration / 3).toLong())
+                        delay((animationDuration / 3).milliseconds)
 
                         // Finish showcasing the single item
                         scope.showcaseItemFinished()
@@ -453,7 +427,7 @@ fun TargetShowcaseLayout(
                         }
 
                         // Wait for animations to complete
-                        delay((animationDuration / 3).toLong())
+                        delay((animationDuration / 3).milliseconds)
 
                         // Finish showcasing the greeting
                         scope.showGreetingFinished()
@@ -495,7 +469,7 @@ fun TargetShowcaseLayout(
                             }
 
                             // Wait for animations to complete
-                            delay(shrinkDuration.toLong())
+                            delay(shrinkDuration.milliseconds)
 
                             // Move to the next / previous target
                             currentIndex += step
@@ -532,7 +506,7 @@ fun TargetShowcaseLayout(
                         }
 
                         // Wait for animations to complete
-                        delay(shrinkDuration.toLong())
+                        delay(shrinkDuration.milliseconds)
 
                         // Reset index and call onFinish
                         currentIndex = validatedInitIndex
@@ -765,7 +739,7 @@ fun TargetShowcaseLayout(
                                         right = itemCenter.x + rectHalfWidth,
                                         bottom = itemCenter.y + rectHalfHeight
                                     )
-                                    addRoundedTarget(rect, with(localDensity) { cornerRadius.toPx() })
+                                    addRoundedTarget(rect, with(localDensity) { (cornerRadius + targetPadding).toPx() })
                                 }
 
                                 else -> {
@@ -828,7 +802,7 @@ fun TargetShowcaseLayout(
                                         right = itemCenter.x + (rectHalfWidth + pulseRadius.value),
                                         bottom = itemCenter.y + (rectHalfHeight + pulseRadius.value)
                                     )
-                                    addRoundedTarget(rect, cornerRadius.toPx())
+                                    addRoundedTarget(rect, (cornerRadius + targetPadding).toPx())
                                 }
 
                                 else -> {
@@ -868,7 +842,7 @@ fun TargetShowcaseLayout(
                                         right = itemCenter.x + rectHalfWidth,
                                         bottom = itemCenter.y + rectHalfHeight
                                     )
-                                    addRoundedTarget(rect, cornerRadius.toPx())
+                                    addRoundedTarget(rect, (cornerRadius + targetPadding).toPx())
                                 }
 
                                 else -> {
@@ -1071,7 +1045,7 @@ fun TargetShowcaseLayout(
 /**
  * Backwards-compatible overload that keeps the [isDarkLayout] flag working.
  *
- * @deprecated [isDarkLayout] has been replaced by [colors]. Pass a light overlay color via
+ * @deprecated [isDarkLayout] has been replaced by [ly.com.tahaben.showcase_layout_compose.ui.ShowcaseLayoutDefaults.colors]. Pass a light overlay color via
  * [ShowcaseLayoutDefaults.colors] instead, e.g. `colors = ShowcaseLayoutDefaults.colors(overlayColor = Color.White.copy(alpha = 0.9f))`.
  */
 @Deprecated(

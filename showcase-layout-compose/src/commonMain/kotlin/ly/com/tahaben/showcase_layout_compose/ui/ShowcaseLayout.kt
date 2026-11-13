@@ -2,8 +2,7 @@ package ly.com.tahaben.showcase_layout_compose.ui
 
 import androidx.compose.animation.core.Animatable
 import androidx.compose.animation.core.FastOutSlowInEasing
-import androidx.compose.animation.core.animateOffsetAsState
-import androidx.compose.animation.core.animateSizeAsState
+import androidx.compose.animation.core.VectorConverter
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.gestures.awaitEachGesture
@@ -13,31 +12,15 @@ import androidx.compose.foundation.gestures.waitForUpOrCancellation
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.runtime.Composable
-import androidx.compose.runtime.LaunchedEffect
-import androidx.compose.runtime.State
-import androidx.compose.runtime.collectAsState
-import androidx.compose.runtime.derivedStateOf
-import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableIntStateOf
-import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.remember
-import androidx.compose.runtime.rememberCoroutineScope
-import androidx.compose.runtime.rememberUpdatedState
-import androidx.compose.runtime.setValue
-import androidx.compose.runtime.snapshotFlow
+import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.geometry.CornerRadius
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Rect
 import androidx.compose.ui.geometry.Size
-import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.Path
-import androidx.compose.ui.graphics.PathMeasure
-import androidx.compose.ui.graphics.StrokeCap
+import androidx.compose.ui.graphics.*
 import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.graphics.drawscope.rotate
-import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.input.pointer.PointerEventPass
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.layout.LayoutCoordinates
@@ -51,39 +34,21 @@ import androidx.compose.ui.text.TextLayoutResult
 import androidx.compose.ui.text.drawText
 import androidx.compose.ui.text.rememberTextMeasurer
 import androidx.compose.ui.text.style.TextOverflow
-import androidx.compose.ui.unit.Constraints
-import androidx.compose.ui.unit.Dp
-import androidx.compose.ui.unit.IntSize
-import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.round
-import androidx.compose.ui.unit.toSize
+import androidx.compose.ui.unit.*
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withTimeoutOrNull
 import ly.com.tahaben.showcase_layout_compose.domain.Level
 import ly.com.tahaben.showcase_layout_compose.domain.ShowcaseEventListener
-import ly.com.tahaben.showcase_layout_compose.domain.usecase.MessageSide
-import ly.com.tahaben.showcase_layout_compose.domain.usecase.PlacedMessage
-import ly.com.tahaben.showcase_layout_compose.domain.usecase.ShowcaseSpacing
-import ly.com.tahaben.showcase_layout_compose.domain.usecase.addRoundedTarget
-import ly.com.tahaben.showcase_layout_compose.domain.usecase.computeShowcaseMessagePlacement
-import ly.com.tahaben.showcase_layout_compose.domain.usecase.isTapInsideTarget
-import ly.com.tahaben.showcase_layout_compose.domain.usecase.validateInitIndex
-import ly.com.tahaben.showcase_layout_compose.domain.usecase.withContrastingColor
-import ly.com.tahaben.showcase_layout_compose.model.Arrow
-import ly.com.tahaben.showcase_layout_compose.model.Gravity
-import ly.com.tahaben.showcase_layout_compose.model.Head
-import ly.com.tahaben.showcase_layout_compose.model.MsgAnimation
-import ly.com.tahaben.showcase_layout_compose.model.ShowcaseData
-import ly.com.tahaben.showcase_layout_compose.model.ShowcaseMsg
-import ly.com.tahaben.showcase_layout_compose.model.ShowcaseMsgScope
-import ly.com.tahaben.showcase_layout_compose.model.Side
-import ly.com.tahaben.showcase_layout_compose.model.TargetShape
+import ly.com.tahaben.showcase_layout_compose.domain.usecase.*
+import ly.com.tahaben.showcase_layout_compose.model.*
 import kotlin.math.PI
 import kotlin.math.atan2
 import kotlin.math.max
+import kotlin.time.Duration.Companion.milliseconds
 
 /**
  *     Copyright 2023 Taha Ben Ashur (tahaak67)
@@ -104,6 +69,7 @@ import kotlin.math.max
 
 private const val TAG = "ShowcaseLayout "
 private const val INDEX_RESET_DELAY = 250L
+private const val FIRST_TARGET_WAIT_MS = 3_000L
 
 /**
  * ShowcaseLayout
@@ -116,6 +82,9 @@ private const val INDEX_RESET_DELAY = 250L
  * @param lineThickness thickness of the arrow line in dp.
  * @param targetShape the shape of the target highlight (RECTANGLE, CIRCLE, or ROUNDED_RECTANGLE).
  * @param cornerRadius the corner radius for the ROUNDED_RECTANGLE shape in dp.
+ * @param targetPadding space added around every target, so the highlight doesn't sit tight against
+ * the element's edge or cut off its shadow. Also enlarges the tap and locked-step touch areas, and
+ * the ROUNDED_RECTANGLE corners grow by the same amount. 0.dp gives the exact bounds (before 1.3.0).
  * @param advanceOnTargetTapOnly when true, only taps inside the highlighted target shape advance/dismiss the showcase; taps elsewhere are ignored. The greeting/initial screen always advances on any tap. Defaults to false (tap anywhere).
  * @param colors the colors used to draw the overlay, created with [ShowcaseLayoutDefaults.colors]. Pass a light [ShowcaseLayoutDefaults.Colors.overlayColor] for a dark UI.
  **/
@@ -130,6 +99,7 @@ fun ShowcaseLayout(
     lineThickness: Dp = 5.dp,
     targetShape: TargetShape = TargetShape.RECTANGLE,
     cornerRadius: Dp = 16.dp,
+    targetPadding: Dp = ShowcaseLayoutDefaults.TargetPadding,
     advanceOnTargetTapOnly: Boolean = false,
     colors: ShowcaseLayoutDefaults.Colors = ShowcaseLayoutDefaults.colors(),
     content: @Composable ShowcaseScope.() -> Unit
@@ -139,7 +109,7 @@ fun ShowcaseLayout(
         mutableIntStateOf(validatedInitIndex)
     }
     val currentContent by rememberUpdatedState(content)
-    val resetDelay by derivedStateOf { animationDuration.toLong() + INDEX_RESET_DELAY }
+    val resetDelay by remember{ derivedStateOf { animationDuration.toLong() + INDEX_RESET_DELAY } }
     val layoutCoordinatesState = remember { mutableStateOf<LayoutCoordinates?>(null) }
     /** Remembered: the scope owns the map of registered targets, which the showcase modifiers only
      * refill on the next layout pass. A new scope per recomposition left that map empty for a frame,
@@ -147,6 +117,7 @@ fun ShowcaseLayout(
     val scope = remember { ShowcaseScopeImpl(greeting) }
     scope.setGreeting(greeting)
     scope.layoutCoordinatesState = layoutCoordinatesState
+    scope.targetPaddingPx = with(LocalDensity.current) { targetPadding.toPx() }
     /** per-step canProceed flags and onProceed callbacks, published by the showcase modifiers */
     val stepRegistry = remember { StepRegistry() }
     scope.stepRegistry = stepRegistry
@@ -192,16 +163,31 @@ fun ShowcaseLayout(
     ) {
         val coroutineScope = rememberCoroutineScope()
         if (isShowcasing || showCasingItem || isSingleGreeting) {
-            val offset by animateOffsetAsState(
-                targetValue = scope.getPositionFor(currentIndex),
-                animationSpec = tween(animationDuration),
-                label = "item offset anim"
-            )
-            val itemSize by animateSizeAsState(
-                targetValue = scope.getSizeFor(currentIndex),
-                animationSpec = tween(animationDuration),
-                label = "item size anim"
-            )
+            /** The cutout is put on its first target, then animates between targets. Animating from
+             * the start made a showcase that began before its target was laid out (isShowcasing
+             * true on the first frame) fly in from the top-left corner, where a target that hasn't
+             * registered yet reports its position. */
+            val offsetAnim = remember { Animatable(Offset.Zero, Offset.VectorConverter) }
+            val sizeAnim = remember { Animatable(Size.Zero, Size.VectorConverter) }
+            var isCutoutPlaced by remember { mutableStateOf(false) }
+            LaunchedEffect(Unit) {
+                /** usually one frame; capped so a target that never appears doesn't keep frames coming */
+                withTimeoutOrNull(FIRST_TARGET_WAIT_MS.milliseconds) {
+                    while (!scope.isPlaced(currentIndex)) withFrameNanos { }
+                }
+                offsetAnim.snapTo(scope.getPositionFor(currentIndex))
+                sizeAnim.snapTo(scope.getSizeFor(currentIndex))
+                isCutoutPlaced = true
+            }
+            val targetOffset = scope.getPositionFor(currentIndex)
+            val targetSize = scope.getSizeFor(currentIndex)
+            LaunchedEffect(targetOffset, targetSize, isCutoutPlaced) {
+                if (!isCutoutPlaced) return@LaunchedEffect
+                launch { offsetAnim.animateTo(targetOffset, tween(animationDuration)) }
+                sizeAnim.animateTo(targetSize, tween(animationDuration))
+            }
+            val offset = offsetAnim.value
+            val itemSize = sizeAnim.value
             var message by remember {
                 mutableStateOf(scope.getMessageFor(currentIndex))
             }
@@ -242,7 +228,7 @@ fun ShowcaseLayout(
                 enterAnimation.job = launch {
                     if (message?.arrow != null) {
                         /** a small delay between moving to new target and drawing the next arrow */
-                        delay(animationDuration.toLong())
+                        delay(animationDuration.milliseconds)
                         isArrowDelayOver = true
                         launch {
                             message?.arrow?.let { arrow ->
@@ -418,7 +404,7 @@ fun ShowcaseLayout(
                             animationSpec = tween(durationMillis = animationDuration / 2, easing = FastOutSlowInEasing)
                         )
                         onFinish()
-                        delay(resetDelay)
+                        delay(resetDelay.milliseconds)
                         currentIndex = validatedInitIndex
                     }
                     isArrowDelayOver = false
@@ -571,7 +557,7 @@ fun ShowcaseLayout(
                                 // Create a combined path with a hole
                                 val showcasePath = Path().apply {
                                     addPath(outerPath)
-                                    op(outerPath, targetPath, androidx.compose.ui.graphics.PathOperation.Difference)
+                                    op(outerPath, targetPath, PathOperation.Difference)
                                 }
 
                                 // Draw the path
@@ -590,13 +576,13 @@ fun ShowcaseLayout(
 
                                 // Create a path for the target area (rounded rectangle)
                                 val targetPath = Path().apply {
-                                    addRoundedTarget(Rect(offset, itemSize), cornerRadius.toPx())
+                                    addRoundedTarget(Rect(offset, itemSize), (cornerRadius + targetPadding).toPx())
                                 }
 
                                 // Create a combined path with a hole
                                 val showcasePath = Path().apply {
                                     addPath(outerPath)
-                                    op(outerPath, targetPath, androidx.compose.ui.graphics.PathOperation.Difference)
+                                    op(outerPath, targetPath, PathOperation.Difference)
                                 }
 
                                 // Draw the path
@@ -700,11 +686,14 @@ fun ShowcaseLayout(
                             } else {
                                 Offset(cardCenterX, cardOffset.y + cardSize.height)
                             }
+                            /** a Top/Bottom arrow comes from the side the message ended up on, so it
+                             * never runs in from the far side of the target (see [arrowSideFacing]) */
+                            val arrowSide = arrowSideFacing(msg.arrow?.targetFrom, messageSide)
                             /** draw arrow line */
                             val arrowPath = Path().apply {
                                 if (msg.arrow?.curved == true) {
-                                    // Start from the message card based on targetFrom direction
-                                    val start = if (msg.content != null) nearEdgeStart else when (msg.arrow?.targetFrom) {
+                                    // Start from the message card, on the side facing the target
+                                    val start = if (msg.content != null) nearEdgeStart else when (arrowSide) {
                                         // bottom center of the message card
                                         Side.Top -> Offset(cardCenterX, cardOffset.y + cardSize.height)
                                         // top center of the message card
@@ -732,7 +721,7 @@ fun ShowcaseLayout(
                                 } else {
                                     /** where the straight line starts: the card edge for circles and custom
                                      * content, a fixed distance from the target otherwise */
-                                    val lineStart: Offset? = if (msg.content != null) nearEdgeStart else when (msg.arrow?.targetFrom) {
+                                    val lineStart: Offset? = if (msg.content != null) nearEdgeStart else when (arrowSide) {
                                         Side.Top -> if (targetShape == TargetShape.CIRCLE) {
                                             Offset(cardCenterX, cardOffset.y + cardSize.height)
                                         } else {
@@ -759,17 +748,8 @@ fun ShowcaseLayout(
 
                                         null -> null
                                     }
-                                    /** custom content follows Gravity.Auto: when the message ended up on the
-                                     * other side of the target than targetFrom assumes, point at the facing
-                                     * edge instead of drawing the line through the target */
-                                    val effectiveTargetFrom = when {
-                                        msg.content == null -> msg.arrow?.targetFrom
-                                        msg.arrow?.targetFrom == Side.Top && messageSide == MessageSide.Below -> Side.Bottom
-                                        msg.arrow?.targetFrom == Side.Bottom && messageSide == MessageSide.Above -> Side.Top
-                                        else -> msg.arrow?.targetFrom
-                                    }
-                                    /** where the straight line ends: just outside the target edge chosen by targetFrom */
-                                    val lineEnd: Offset? = when (effectiveTargetFrom) {
+                                    /** where the straight line ends: just outside the target edge facing the message */
+                                    val lineEnd: Offset? = when (arrowSide) {
                                         Side.Top -> if (targetShape == TargetShape.CIRCLE) {
                                             // For circle, point to the top edge of the circle
                                             Offset(centerX, if (hasArrowHead) centerY - radius - arrowHeadMargin else centerY - radius)
@@ -829,7 +809,7 @@ fun ShowcaseLayout(
                                 }
                                 scope.showcaseEventListener?.onEvent(
                                     Level.VERBOSE,
-                                    TAG + "pos:${pos} tan:${tan}"
+                                    TAG + "pos:${pos.contentToString()} tan:${tan.contentToString()}"
                                 )
                             }
                             drawPath(
@@ -1006,7 +986,7 @@ fun ShowcaseLayout(
 /**
  * Backwards-compatible overload that keeps the [isDarkLayout] flag working.
  *
- * @deprecated [isDarkLayout] has been replaced by [colors]. Pass a light overlay color via
+ * @deprecated [isDarkLayout] has been replaced by [ly.com.tahaben.showcase_layout_compose.ui.ShowcaseLayoutDefaults.colors]. Pass a light overlay color via
  * [ShowcaseLayoutDefaults.colors] instead, e.g. `colors = ShowcaseLayoutDefaults.colors(overlayColor = Color.White.copy(alpha = 0.9f))`.
  */
 @Deprecated(
@@ -1160,15 +1140,25 @@ class ShowcaseScopeImpl(greeting: ShowcaseMsg?) : ShowcaseScope {
         }
     }
 
+    /** The highlighted size: the target's own size plus [targetPaddingPx] on every side. The
+     * greeting (index 0) and a target that hasn't registered yet have no size, so no padding. */
     fun getSizeFor(index: Int): Size {
-        val size = showcaseDataHashMap[index]?.size?.toSize() ?: Size(0f, 0f)
+        val raw = showcaseDataHashMap[index]?.size?.toSize() ?: Size(0f, 0f)
+        val size = if (index == 0 || raw == Size.Zero) raw else Size(raw.width + 2 * targetPaddingPx, raw.height + 2 * targetPaddingPx)
         showcaseEventListener?.onEvent(Level.VERBOSE, TAG + "showcase map size: $size")
         return size
     }
 
+    /** Space added around every target, in px; set by the layout from its `targetPadding`. */
+    internal var targetPaddingPx: Float = 0f
+
+    /** True once the target shown at [index] has been laid out (the greeting uses target 1's spot). */
+    internal fun isPlaced(index: Int): Boolean =
+        showcaseDataHashMap[if (index == 0) 1 else index]?.coordinates?.isAttached == true
+
     fun getPositionFor(index: Int): Offset {
         val data = showcaseDataHashMap[if (index == 0) 1 else index] ?: return Offset(0f, 0f)
-        return positionInLayout(data)
+        return positionInLayout(data) - Offset(targetPaddingPx, targetPaddingPx)
     }
 
     /** The stored position is relative to the composition root, but the overlay canvas draws
