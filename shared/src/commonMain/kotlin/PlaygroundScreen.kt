@@ -142,7 +142,8 @@ fun PlaygroundScreen(openUrl: (String) -> Boolean, onBack: () -> Unit) {
     var animateMsg by remember { mutableStateOf(false) }
     val msgBackground by remember { mutableStateOf(Color.Yellow) }
     var msgCornerRadius by remember { mutableStateOf(0) }
-    var headSize by remember { mutableStateOf(25f) }
+    // arrow head size in dp
+    var headSize by remember { mutableStateOf(9f) }
     var lineThinckness by remember { mutableStateOf(5) }
     var durationSliderValue by remember { mutableStateOf(500) }
     var animationDuration by remember { mutableStateOf(500) }
@@ -193,7 +194,7 @@ fun PlaygroundScreen(openUrl: (String) -> Boolean, onBack: () -> Unit) {
                                     arrow = Arrow(
                                         animSize = animateHead,
                                         head = headType,
-                                        headSize = headSize,
+                                        headSize = headSize.dp,
                                         animationDuration = animationDuration
                                     ),
                                     enterAnim = if (animateMsg) MsgAnimation.FadeInOut(animationDuration) else MsgAnimation.None
@@ -215,7 +216,7 @@ fun PlaygroundScreen(openUrl: (String) -> Boolean, onBack: () -> Unit) {
                                 arrow = Arrow(
                                     animSize = animateHead,
                                     head = headType,
-                                    headSize = headSize,
+                                    headSize = headSize.dp,
                                     curved = true,
                                     animationDuration = animationDuration
                                 ),
@@ -269,7 +270,7 @@ fun PlaygroundScreen(openUrl: (String) -> Boolean, onBack: () -> Unit) {
                                     arrow = Arrow(
                                         animSize = animateHead,
                                         head = headType,
-                                        headSize = headSize,
+                                        headSize = headSize.dp,
                                         animationDuration = animationDuration
                                     ),
                                     enterAnim = if (animateMsg) MsgAnimation.FadeInOut(animationDuration) else MsgAnimation.None
@@ -313,7 +314,7 @@ fun PlaygroundScreen(openUrl: (String) -> Boolean, onBack: () -> Unit) {
                                         arrow = Arrow(
                                             animSize = animateHead,
                                             head = headType,
-                                            headSize = headSize,
+                                            headSize = headSize.dp,
                                             animationDuration = animationDuration
                                         ),
                                         textStyle = TextStyle(color = Color.White, fontWeight = FontWeight.Bold),
@@ -618,7 +619,7 @@ fun PlaygroundScreen(openUrl: (String) -> Boolean, onBack: () -> Unit) {
                                         Slider(
                                             value = headSize,
                                             onValueChange = { headSize = it },
-                                            valueRange = 10f..45f,
+                                            valueRange = 4f..16f,
                                             thumb = {
                                                 Label(
                                                     label = {
@@ -627,7 +628,7 @@ fun PlaygroundScreen(openUrl: (String) -> Boolean, onBack: () -> Unit) {
                                                                 .requiredSize(45.dp, 25.dp)
                                                                 .wrapContentWidth()
                                                         ) {
-                                                            Text("${headSize}")
+                                                            Text("${headSize.roundToInt()}dp")
                                                         }
                                                     }
                                                 ) {
@@ -762,7 +763,7 @@ fun PlaygroundScreen(openUrl: (String) -> Boolean, onBack: () -> Unit) {
                                         animSize = animateHead,
                                         head = headType,
                                         targetFrom = Side.Top,
-                                        headSize = headSize,
+                                        headSize = headSize.dp,
                                         animationDuration = animationDuration
                                     ),
                                     enterAnim = if (animateMsg) MsgAnimation.FadeInOut(animationDuration) else MsgAnimation.None,

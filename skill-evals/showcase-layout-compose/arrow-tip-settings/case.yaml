@@ -1,0 +1,11 @@
+schema_version: "1.1"
+name: arrow-tip-settings
+expected_outcome: |
+  Because an arrow is requested, the agent uses ShowcaseLayout (TargetShowcaseLayout draws no arrows).
+  It wraps the Scaffold (not inside the Column), registers the Backup row with Modifier.showcase(index
+  = 1, ...) through a modifier passed into SettingsRow, and shows it once: showcaseItem(1) or a one-
+  step tour, gated and saved through the existing SettingsStore. The message is a text ShowcaseMsg
+  with a readable text color, an explicit gravity, and Arrow.targetFrom matching the gravity side.
+  headSize, if set, is a Dp. The code compiles against 1.3.0.
+context:
+  scaffold_script: place-files.sh

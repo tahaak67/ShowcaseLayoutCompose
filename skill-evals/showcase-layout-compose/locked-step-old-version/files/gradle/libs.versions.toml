@@ -1,0 +1,16 @@
+[versions]
+agp = "8.12.0"
+kotlin = "2.4.21"
+compose-multiplatform = "1.12.2"
+android-compileSdk = "36"
+android-minSdk = "24"
+showcase-layout-compose = "1.1.1"
+
+[libraries]
+showcase-layout-compose = { module = "ly.com.tahaben:showcase-layout-compose", version.ref = "showcase-layout-compose" }
+
+[plugins]
+androidApplication = { id = "com.android.application", version.ref = "agp" }
+kotlinMultiplatform = { id = "org.jetbrains.kotlin.multiplatform", version.ref = "kotlin" }
+composeMultiplatform = { id = "org.jetbrains.compose", version.ref = "compose-multiplatform" }
+composeCompiler = { id = "org.jetbrains.kotlin.plugin.compose", version.ref = "kotlin" }

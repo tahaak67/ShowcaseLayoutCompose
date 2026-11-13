@@ -1,13 +1,7 @@
 package ly.com.tahaben.showcase_layout_compose.ui
 
 import androidx.compose.animation.animateColorAsState
-import androidx.compose.animation.core.Animatable
-import androidx.compose.animation.core.AnimationVector1D
-import androidx.compose.animation.core.FastOutLinearInEasing
-import androidx.compose.animation.core.FastOutSlowInEasing
-import androidx.compose.animation.core.RepeatMode
-import androidx.compose.animation.core.infiniteRepeatable
-import androidx.compose.animation.core.tween
+import androidx.compose.animation.core.*
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.gestures.awaitEachGesture
 import androidx.compose.foundation.gestures.awaitFirstDown
@@ -16,18 +10,7 @@ import androidx.compose.foundation.gestures.waitForUpOrCancellation
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.runtime.Composable
-import androidx.compose.runtime.LaunchedEffect
-import androidx.compose.runtime.collectAsState
-import androidx.compose.runtime.derivedStateOf
-import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableIntStateOf
-import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.remember
-import androidx.compose.runtime.rememberCoroutineScope
-import androidx.compose.runtime.rememberUpdatedState
-import androidx.compose.runtime.setValue
-import androidx.compose.runtime.snapshotFlow
+import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.geometry.CornerRadius
 import androidx.compose.ui.geometry.Offset
@@ -46,33 +29,19 @@ import androidx.compose.ui.layout.onGloballyPositioned
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.semantics.testTag
-import androidx.compose.ui.text.TextLayoutResult
 import androidx.compose.ui.text.drawText
 import androidx.compose.ui.text.rememberTextMeasurer
 import androidx.compose.ui.text.style.TextOverflow
-import androidx.compose.ui.unit.Constraints
-import androidx.compose.ui.unit.Dp
-import androidx.compose.ui.unit.IntSize
-import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.round
+import androidx.compose.ui.unit.*
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
 import ly.com.tahaben.showcase_layout_compose.domain.Level
-import ly.com.tahaben.showcase_layout_compose.domain.usecase.addRoundedTarget
-import ly.com.tahaben.showcase_layout_compose.domain.usecase.computeTargetLayoutMessagePlacement
-import ly.com.tahaben.showcase_layout_compose.domain.usecase.coveringRadius
-import ly.com.tahaben.showcase_layout_compose.domain.usecase.isTapInsideTarget
-import ly.com.tahaben.showcase_layout_compose.domain.usecase.targetLayoutMessageMaxWidth
-import ly.com.tahaben.showcase_layout_compose.domain.usecase.validateInitIndex
-import ly.com.tahaben.showcase_layout_compose.model.Gravity
-import ly.com.tahaben.showcase_layout_compose.model.MsgAnimation
-import ly.com.tahaben.showcase_layout_compose.model.ShowcaseMsg
-import ly.com.tahaben.showcase_layout_compose.model.ShowcaseMsgScope
-import ly.com.tahaben.showcase_layout_compose.model.TargetShape
+import ly.com.tahaben.showcase_layout_compose.domain.usecase.*
+import ly.com.tahaben.showcase_layout_compose.model.*
 import kotlin.math.max
-import kotlin.math.min
+import kotlin.time.Duration.Companion.milliseconds
 
 
 /**
@@ -94,7 +63,6 @@ import kotlin.math.min
 
 private const val TAG = "TargetShowcaseLayout "
 private const val INDEX_RESET_DELAY = 250L
-private const val TARGET_TAP_TOLERANCE_PX = 16f
 
 /**
  * TargetShowcaseLayout
@@ -103,10 +71,16 @@ private const val TARGET_TAP_TOLERANCE_PX = 16f
  * @param initIndex the initial value of counter, set this to 1 if you don't want a greeting screen before showcasing target.
  * @param animationDuration total animation time taken when switching from current to next target in milliseconds.
  * @param onFinish what happens when all items are showcased.
+ * TargetShowcaseLayout draws no arrows: a [ShowcaseMsg.arrow] is ignored (use [ShowcaseLayout] for arrows).
+ * For a text message, [ShowcaseMsg.msgBackground] is the overlay color of that step rather than a
+ * card behind the text.
+ *
  * @param greeting greeting message to be shown before showcasing the first composable, leave [initIndex] at 0 if you want to use this.
- * @param lineThickness thickness of the arrow line in dp.
  * @param targetShape the shape of the target highlight, can be either CIRCLE, RECTANGLE, or ROUNDED_RECTANGLE.
  * @param cornerRadius the radius of the corners when targetShape is ROUNDED_RECTANGLE.
+ * @param targetPadding space added around every target, so the highlight doesn't sit tight against
+ * the element's edge or cut off its shadow. Also enlarges the tap and locked-step touch areas, and
+ * the ROUNDED_RECTANGLE corners grow by the same amount. 0.dp gives the exact bounds (before 1.3.0).
  * @param animateToNextTarget if true, the target shape will animate smoothly from one target to the next when the index changes.
  *                           If false, the shape will shrink at the current location, then expand at the new location.
  * @param advanceOnTargetTapOnly when true, only taps inside the highlighted target shape advance/dismiss the showcase; taps elsewhere are ignored. The greeting/initial screen always advances on any tap. Defaults to false (tap anywhere).
@@ -119,9 +93,9 @@ fun TargetShowcaseLayout(
     animationDuration: Int = 1000,
     onFinish: () -> Unit,
     greeting: ShowcaseMsg? = null,
-    lineThickness: Dp = 5.dp,
     targetShape: TargetShape = TargetShape.ROUNDED_RECTANGLE,
     cornerRadius: Dp = 8.dp,
+    targetPadding: Dp = ShowcaseLayoutDefaults.TargetPadding,
     animateToNextTarget: Boolean = true,
     advanceOnTargetTapOnly: Boolean = false,
     colors: ShowcaseLayoutDefaults.Colors = ShowcaseLayoutDefaults.colors(),
@@ -139,12 +113,15 @@ fun TargetShowcaseLayout(
     val scope = remember { ShowcaseScopeImpl(greeting) }
     scope.setGreeting(greeting)
     scope.layoutCoordinatesState = layoutCoordinatesState
+    scope.targetPaddingPx = with(LocalDensity.current) { targetPadding.toPx() }
     /** per-step canProceed flags and onProceed callbacks, published by the showcase modifiers */
     val stepRegistry = remember { StepRegistry() }
     scope.stepRegistry = stepRegistry
     val stepConditions = stepRegistry.conditions
     scope.currentContent()
     val localDensity = LocalDensity.current
+    /** message distances, defined in dp */
+    val spacing = remember(localDensity) { ShowcaseSpacing.from(localDensity) }
     var singleGreetingMsg by remember { mutableStateOf<ShowcaseMsg?>(null) }
     val showcaseItem = scope.showcaseActionFlow.collectAsState()
     val showCasingItem by remember {
@@ -243,7 +220,16 @@ fun TargetShowcaseLayout(
                             )
                         )
                     }
-                    delay(pulseDuration.toLong())
+                    delay(pulseDuration.milliseconds)
+                }
+            }
+
+            LaunchedEffect(currentIndex, isSingleGreeting) {
+                if (message?.arrow != null) {
+                    scope.showcaseEventListener?.onEvent(
+                        Level.WARNING,
+                        TAG + "step $currentIndex has an arrow, but TargetShowcaseLayout draws no arrows; use ShowcaseLayout for arrows"
+                    )
                 }
             }
 
@@ -268,8 +254,8 @@ fun TargetShowcaseLayout(
                     animatedY.snapTo(offset.y)
                     message = scope.getMessageFor(currentIndex)
                     canvasColor =  message?.msgBackground ?: colors.overlayColor
-                    delay(animationDuration.toLong())
-                    handleMessageEnterAnimation(message, messageTextAlpha, animationDuration)
+                    delay(animationDuration.milliseconds)
+                    fadeInMessage(message, messageTextAlpha)
                     outerAnimatable.animateTo(
                         1f,
                         animationSpec = tween(
@@ -337,7 +323,7 @@ fun TargetShowcaseLayout(
                             animatedWidth.animateTo(itemSize.width)
                         }
 
-                        delay(animationDuration.toLong() / 3)
+                        delay((animationDuration.toLong() / 3).milliseconds)
                         canvasAlpha.animateTo(1f)
 
                         // Expand at new location
@@ -358,8 +344,8 @@ fun TargetShowcaseLayout(
 
                     // After the animation has completed, fade the message text back in
                     launch {
-                        delay(animationDuration.toLong())
-                        handleMessageEnterAnimation(message, messageTextAlpha, animationDuration)
+                        delay(animationDuration.milliseconds)
+                        fadeInMessage(message, messageTextAlpha)
                     }
                 }
             }
@@ -394,7 +380,7 @@ fun TargetShowcaseLayout(
 
                     // Shrink both width and height simultaneously and shrink the outer circle
                     coroutineScope.launch {
-                        handleMessageExitAnimation(message, messageTextAlpha, animationDuration)
+                        fadeOutMessage(message, messageTextAlpha)
                         // Shrink the outer circle
                         launch {
                             outerAnimatable.animateTo(
@@ -418,7 +404,7 @@ fun TargetShowcaseLayout(
                         }
 
                         // Wait for animations to complete
-                        delay((animationDuration / 3).toLong())
+                        delay((animationDuration / 3).milliseconds)
 
                         // Finish showcasing the single item
                         scope.showcaseItemFinished()
@@ -427,7 +413,7 @@ fun TargetShowcaseLayout(
                     return
                 } else if (isSingleGreeting) {
                     coroutineScope.launch {
-                        handleMessageExitAnimation(singleGreetingMsg, messageTextAlpha, animationDuration)
+                        fadeOutMessage(singleGreetingMsg, messageTextAlpha)
 
                         // Fade out the entire canvas to make the circle completely disappear
                         launch {
@@ -441,7 +427,7 @@ fun TargetShowcaseLayout(
                         }
 
                         // Wait for animations to complete
-                        delay((animationDuration / 3).toLong())
+                        delay((animationDuration / 3).milliseconds)
 
                         // Finish showcasing the greeting
                         scope.showGreetingFinished()
@@ -458,7 +444,7 @@ fun TargetShowcaseLayout(
 
                         // Shrink both width and height simultaneously and shrink the outer circle
                         coroutineScope.launch {
-                            handleMessageExitAnimation(message, messageTextAlpha, animationDuration)
+                            fadeOutMessage(message, messageTextAlpha)
 
                             // Shrink the outer circle
                             launch {
@@ -483,7 +469,7 @@ fun TargetShowcaseLayout(
                             }
 
                             // Wait for animations to complete
-                            delay(shrinkDuration.toLong())
+                            delay(shrinkDuration.milliseconds)
 
                             // Move to the next / previous target
                             currentIndex += step
@@ -494,7 +480,7 @@ fun TargetShowcaseLayout(
                         // When animateToNextTarget is true, we don't want to fade out the outer circle
                         // we just handle message animation if any then move to the next target
                         coroutineScope.launch {
-                            handleMessageExitAnimation(message, messageTextAlpha, animationDuration)
+                            fadeOutMessage(message, messageTextAlpha)
 
                             // Move to the next / previous target
                             currentIndex += step
@@ -506,7 +492,7 @@ fun TargetShowcaseLayout(
 
                     coroutineScope.launch {
                         val shrinkDuration = animationDuration / 2
-                        handleMessageExitAnimation(message, messageTextAlpha, animationDuration)
+                        fadeOutMessage(message, messageTextAlpha)
 
                         // Fade out the entire canvas to make the circle completely disappear
                         launch {
@@ -520,7 +506,7 @@ fun TargetShowcaseLayout(
                         }
 
                         // Wait for animations to complete
-                        delay(shrinkDuration.toLong())
+                        delay(shrinkDuration.milliseconds)
 
                         // Reset index and call onFinish
                         currentIndex = validatedInitIndex
@@ -586,7 +572,7 @@ fun TargetShowcaseLayout(
                         currentTargetTopLeft,
                         currentTargetSize,
                         targetShape,
-                        TARGET_TAP_TOLERANCE_PX
+                        spacing.targetTapTolerance
                     )
                 ) {
                     scope.showcaseEventListener?.onEvent(
@@ -630,7 +616,8 @@ fun TargetShowcaseLayout(
                         val maxTextWidth = max(1, (size.width * 0.8f).toInt()) // Use 80% of screen width
                         val textResult = textMeasurer.measure(
                             msg.text,
-                            style = msg.textStyle,
+                            /** no color set: white or black, whichever reads on the overlay */
+                            style = msg.textStyle.withContrastingColor(canvasColor),
                             overflow = TextOverflow.Visible,
                             constraints = Constraints(0, maxTextWidth)
                         )
@@ -640,7 +627,7 @@ fun TargetShowcaseLayout(
                         val textY = (size.height - textResult.size.height) / 2
 
                         // Draw a background for the text with padding
-                        val bgPadding = 40f
+                        val bgPadding = spacing.greetingPadding
                         val bgRect = Rect(
                             left = textX - bgPadding,
                             top = textY - bgPadding,
@@ -689,66 +676,12 @@ fun TargetShowcaseLayout(
                     animatedY.value + itemSize.height.div(2)
                 )
 
-                // Constants for padding and spacing
-                val safetyPadding = 45f
-                val horizontalSafetyPadding = safetyPadding * 1.5f
-
-
-                // Initial calculation of outer circle dimensions (will be adjusted based on text)
-                // Set the outer circle radius to half of the canvas width
+                // The outer circle covers the whole layout wherever the target sits
                 val outerRadius = coveringRadius(itemCenter, size)
                 val outerLeft = itemCenter.x - outerRadius
                 val outerTop = itemCenter.y - outerRadius
                 val outerRight = itemCenter.x + outerRadius
                 val outerBottom = itemCenter.y + outerRadius
-
-                // Variables to store text measurement and position
-                var textX = 0f
-                var textWidth = 0
-                var textHeight = 0
-                var textResult: TextLayoutResult? = null
-
-                // Calculate text dimensions and position first, then adjust outer circle if needed
-                message?.takeIf { it.content == null }?.let { msg ->
-                    // First, calculate an initial estimate of available width for text
-                    // This is a conservative estimate that will be refined
-                    val initialMaxWidth =
-                        min(size.width.toInt() - 200, (outerRight - outerLeft - 4 * safetyPadding).toInt())
-                    val maxTextWidth = max(1, initialMaxWidth)
-
-                    // Measure text with appropriate constraints
-                    textResult = textMeasurer.measure(
-                        msg.text,
-                        style = msg.textStyle,
-                        overflow = TextOverflow.Visible,
-                        constraints = Constraints(0, maxTextWidth)
-                    )
-
-                    // Store text dimensions
-                    textWidth = textResult.size.width
-                    textHeight = textResult.size.height
-
-
-                    // Calculate horizontal position (centered by default)
-                    textX = itemCenter.x - textWidth / 2
-
-                    // Ensure text stays within screen bounds horizontally
-                    if (textX < horizontalSafetyPadding) {
-                        textX = horizontalSafetyPadding
-                        scope.showcaseEventListener?.onEvent(
-                            Level.INFO,
-                            TAG + "Text would extend beyond left edge of screen. Moving text right."
-                        )
-                    }
-
-                    if (textX + textWidth > size.width - horizontalSafetyPadding) {
-                        scope.showcaseEventListener?.onEvent(
-                            Level.INFO,
-                            TAG + "Text would extend beyond right edge of screen. Moving text left."
-                        )
-                    }
-
-                }
 
                 // Create the donut path after all adjustments to outer circle dimensions
                 // Calculate the center of the outer circle
@@ -806,7 +739,7 @@ fun TargetShowcaseLayout(
                                         right = itemCenter.x + rectHalfWidth,
                                         bottom = itemCenter.y + rectHalfHeight
                                     )
-                                    addRoundedTarget(rect, with(localDensity) { cornerRadius.toPx() })
+                                    addRoundedTarget(rect, with(localDensity) { (cornerRadius + targetPadding).toPx() })
                                 }
 
                                 else -> {
@@ -869,7 +802,7 @@ fun TargetShowcaseLayout(
                                         right = itemCenter.x + (rectHalfWidth + pulseRadius.value),
                                         bottom = itemCenter.y + (rectHalfHeight + pulseRadius.value)
                                     )
-                                    addRoundedTarget(rect, cornerRadius.toPx())
+                                    addRoundedTarget(rect, (cornerRadius + targetPadding).toPx())
                                 }
 
                                 else -> {
@@ -909,7 +842,7 @@ fun TargetShowcaseLayout(
                                         right = itemCenter.x + rectHalfWidth,
                                         bottom = itemCenter.y + rectHalfHeight
                                     )
-                                    addRoundedTarget(rect, cornerRadius.toPx())
+                                    addRoundedTarget(rect, (cornerRadius + targetPadding).toPx())
                                 }
 
                                 else -> {
@@ -944,9 +877,10 @@ fun TargetShowcaseLayout(
                     // Measure text with appropriate constraints to ensure it wraps if needed
                     val textResult = textMeasurer.measure(
                         msg.text,
-                        style = msg.textStyle,
+                        /** no color set: white or black, whichever reads on the overlay */
+                        style = msg.textStyle.withContrastingColor(canvasColor),
                         overflow = TextOverflow.Visible,
-                        constraints = Constraints(0, targetLayoutMessageMaxWidth(size))
+                        constraints = Constraints(0, targetLayoutMessageMaxWidth(size, spacing))
                     )
 
                     // Use rectHalfHeight for rectangle mode to position text correctly relative to the rectangle
@@ -958,6 +892,7 @@ fun TargetShowcaseLayout(
                         verticalOffset = verticalOffset,
                         outer = Rect(outerLeft, outerTop, outerRight, outerBottom),
                         canvasSize = size,
+                        spacing = spacing,
                         log = { scope.showcaseEventListener?.onEvent(Level.INFO, TAG + it) }
                     )
 
@@ -982,7 +917,10 @@ fun TargetShowcaseLayout(
              * composed, taps on non-clickable parts fall through to the canvas above. */
             val customContent = message?.content
             val customMsgVisible by remember { derivedStateOf { messageTextAlpha.value > 0f } }
-            if (customContent != null && customMsgVisible) {
+            /** read the visibility first: `message` is not snapshot state, so this read is what
+             * recomposes once the message fades in (e.g. a tour started on the first frame, when
+             * the step's message isn't registered yet) */
+            if (customMsgVisible && customContent != null) {
                 val isGreetingStep = currentIndex == 0 || isSingleGreeting
                 Box(
                     modifier = Modifier
@@ -995,7 +933,7 @@ fun TargetShowcaseLayout(
                             val maxContentWidth = if (isGreetingStep) {
                                 max(1, (canvasSize.width * 0.8f).toInt())
                             } else {
-                                targetLayoutMessageMaxWidth(canvasSize)
+                                targetLayoutMessageMaxWidth(canvasSize, spacing)
                             }
                             val placeable = measurable.measure(
                                 Constraints(maxWidth = maxContentWidth, maxHeight = layoutConstraints.maxHeight)
@@ -1024,6 +962,7 @@ fun TargetShowcaseLayout(
                                         verticalOffset = if (targetShape == TargetShape.CIRCLE) circleRadius else itemSize.height / 2,
                                         outer = Rect(center = itemCenter, radius = outerRadius),
                                         canvasSize = canvasSize,
+                                        spacing = spacing,
                                         log = { scope.showcaseEventListener?.onEvent(Level.INFO, TAG + it) }
                                     ).offset
                                 }
@@ -1057,19 +996,67 @@ fun TargetShowcaseLayout(
 }
 
 /**
+ * Backwards-compatible overload that keeps accepting [lineThickness].
+ *
+ * @deprecated TargetShowcaseLayout draws no arrows, so [lineThickness] never had an effect here.
+ * Remove the argument; arrows (and their line thickness) are a [ShowcaseLayout] feature.
+ */
+@Deprecated(
+    message = "TargetShowcaseLayout draws no arrows, so lineThickness has no effect. Remove the argument.",
+    replaceWith = ReplaceWith(
+        "TargetShowcaseLayout(isShowcasing = isShowcasing, initIndex = initIndex, " +
+                "animationDuration = animationDuration, onFinish = onFinish, greeting = greeting, " +
+                "targetShape = targetShape, cornerRadius = cornerRadius, " +
+                "animateToNextTarget = animateToNextTarget, advanceOnTargetTapOnly = advanceOnTargetTapOnly, " +
+                "colors = colors, content = content)"
+    )
+)
+@Suppress("UNUSED_PARAMETER")
+@Composable
+fun TargetShowcaseLayout(
+    isShowcasing: Boolean,
+    initIndex: Int = 0,
+    animationDuration: Int = 1000,
+    onFinish: () -> Unit,
+    greeting: ShowcaseMsg? = null,
+    lineThickness: Dp,
+    targetShape: TargetShape = TargetShape.ROUNDED_RECTANGLE,
+    cornerRadius: Dp = 8.dp,
+    animateToNextTarget: Boolean = true,
+    advanceOnTargetTapOnly: Boolean = false,
+    colors: ShowcaseLayoutDefaults.Colors = ShowcaseLayoutDefaults.colors(),
+    content: @Composable ShowcaseScope.() -> Unit
+) {
+    TargetShowcaseLayout(
+        isShowcasing = isShowcasing,
+        initIndex = initIndex,
+        animationDuration = animationDuration,
+        onFinish = onFinish,
+        greeting = greeting,
+        targetShape = targetShape,
+        cornerRadius = cornerRadius,
+        animateToNextTarget = animateToNextTarget,
+        advanceOnTargetTapOnly = advanceOnTargetTapOnly,
+        colors = colors,
+        content = content
+    )
+}
+
+/**
  * Backwards-compatible overload that keeps the [isDarkLayout] flag working.
  *
- * @deprecated [isDarkLayout] has been replaced by [colors]. Pass a light overlay color via
+ * @deprecated [isDarkLayout] has been replaced by [ly.com.tahaben.showcase_layout_compose.ui.ShowcaseLayoutDefaults.colors]. Pass a light overlay color via
  * [ShowcaseLayoutDefaults.colors] instead, e.g. `colors = ShowcaseLayoutDefaults.colors(overlayColor = Color.White.copy(alpha = 0.9f))`.
  */
 @Deprecated(
     message = "isDarkLayout has been replaced by the colors parameter; pass a light overlay color instead.",
     replaceWith = ReplaceWith(
         "TargetShowcaseLayout(isShowcasing, initIndex, animationDuration, onFinish, greeting, " +
-                "lineThickness, targetShape, cornerRadius, animateToNextTarget, false, " +
+                "targetShape, cornerRadius, animateToNextTarget, false, " +
                 "ShowcaseLayoutDefaults.colors(overlayColor = if (isDarkLayout) Color.White.copy(alpha = 0.9f) else Color.Black.copy(alpha = 0.9f)), content)"
     )
 )
+@Suppress("UNUSED_PARAMETER")
 @Composable
 fun TargetShowcaseLayout(
     isShowcasing: Boolean,
@@ -1090,7 +1077,6 @@ fun TargetShowcaseLayout(
         animationDuration = animationDuration,
         onFinish = onFinish,
         greeting = greeting,
-        lineThickness = lineThickness,
         targetShape = targetShape,
         cornerRadius = cornerRadius,
         animateToNextTarget = animateToNextTarget,
@@ -1101,6 +1087,25 @@ fun TargetShowcaseLayout(
     )
 }
 
+/** Fades a message in, honoring its [ShowcaseMsg.enterAnim]. */
+internal suspend fun fadeInMessage(message: ShowcaseMsg?, alpha: Animatable<Float, AnimationVector1D>) {
+    when (val anim = message?.enterAnim) {
+        is MsgAnimation.FadeInOut -> alpha.animateTo(1f, tween(anim.duration, easing = FastOutSlowInEasing))
+        MsgAnimation.None -> alpha.snapTo(1f)
+        null -> Unit
+    }
+}
+
+/** Fades a message out, honoring its [ShowcaseMsg.exitAnim]. */
+internal suspend fun fadeOutMessage(message: ShowcaseMsg?, alpha: Animatable<Float, AnimationVector1D>) {
+    when (val anim = message?.exitAnim) {
+        is MsgAnimation.FadeInOut -> alpha.animateTo(0f, tween(anim.duration, easing = FastOutSlowInEasing))
+        MsgAnimation.None -> alpha.snapTo(0f)
+        null -> Unit
+    }
+}
+
+@Deprecated("An internal helper of TargetShowcaseLayout that was public by mistake. It will be removed.")
 suspend fun handleMessageExitAnimation(
     message: ShowcaseMsg?,
     messageTextAlpha: Animatable<Float, AnimationVector1D>,
@@ -1127,6 +1132,7 @@ suspend fun handleMessageExitAnimation(
     }
 }
 
+@Deprecated("An internal helper of TargetShowcaseLayout that was public by mistake. It will be removed.")
 suspend fun handleMessageEnterAnimation(
     message: ShowcaseMsg?,
     messageTextAlpha: Animatable<Float, AnimationVector1D>,

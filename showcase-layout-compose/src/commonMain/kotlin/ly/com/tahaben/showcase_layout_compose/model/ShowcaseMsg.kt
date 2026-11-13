@@ -28,11 +28,16 @@ import androidx.compose.ui.unit.dp
  * ShowcaseMsg
  *
  * @param text the text of the message.
- * @param textStyle text style.
- * @param msgBackground background color for the text, default is Transparent. Note: in `TargetShowcaseLayout` this also acts as the overlay color for this step and takes precedence over `ShowcaseLayoutDefaults.Colors.overlayColor`.
- * @param roundedCorner the corner radius value in dp.
+ * @param textStyle text style. When it sets no color (the default), the text is drawn white or
+ * black, whichever reads better on what is behind it: the [msgBackground] card in `ShowcaseLayout`
+ * when one is set, otherwise the overlay color.
+ * @param msgBackground in `ShowcaseLayout`, the color of a card drawn behind the text (no card when
+ * null). In `TargetShowcaseLayout` no card is drawn behind a step's text: this is the overlay color
+ * for this step instead, drawn at 90% alpha, and it takes precedence over
+ * `ShowcaseLayoutDefaults.Colors.overlayColor`.
+ * @param roundedCorner the corner radius of the [msgBackground] card in dp.
  * @param gravity display the message below or on top of target.
- * @param arrow add an arrow.
+ * @param arrow add an arrow. Only drawn by `ShowcaseLayout`; `TargetShowcaseLayout` ignores it.
  * @param enterAnim enter animation.
  * @param exitAnim exit animation.
  * @param content an optional custom composable to show instead of the text, for example an image
@@ -47,7 +52,7 @@ import androidx.compose.ui.unit.dp
  **/
 data class ShowcaseMsg(
     val text: AnnotatedString,
-    val textStyle: TextStyle = TextStyle(color = Color.Black),
+    val textStyle: TextStyle = TextStyle.Default,
     val msgBackground: Color? = null,
     val roundedCorner: Dp = 0.dp,
     val gravity: Gravity = Gravity.Auto,
@@ -58,7 +63,7 @@ data class ShowcaseMsg(
 ) {
     constructor(
         text: String,
-        textStyle: TextStyle = TextStyle(color = Color.Black),
+        textStyle: TextStyle = TextStyle.Default,
         msgBackground: Color? = null,
         roundedCorner: Dp = 0.dp,
         gravity: Gravity = Gravity.Auto,
@@ -86,7 +91,7 @@ data class ShowcaseMsg(
      * ```
      *
      * @param gravity display the message below or on top of target.
-     * @param arrow add an arrow pointing from the composable to the target.
+     * @param arrow add an arrow pointing from the composable to the target (`ShowcaseLayout` only).
      * @param enterAnim enter animation.
      * @param exitAnim exit animation.
      * @param msgBackground only used by `TargetShowcaseLayout`, where it acts as the overlay color
